@@ -140,7 +140,7 @@ input[type="text"], input[type="date"], input[type="password"] {
 .list-status.error { color: var(--error); }
 
 .film-list { list-style: none; margin: 0; padding: 0; }
-.film-list li {
+.film-list li.film {
   display: grid;
   grid-template-columns: 1fr auto;   /* title takes the space, rating sits on the right */
   align-items: center;
@@ -173,3 +173,20 @@ input[type="text"], input[type="date"], input[type="password"] {
   color-scheme: dark;
 }
 .no-match { color: var(--muted); display: block !important; }
+
+/* ---------- Month headings in the Seen list ---------- */
+.month-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 22px;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;     /* shows as "JULY 2026" */
+}
+.month-heading:first-child { margin-top: 4px; }
+.month-count { color: var(--muted); font-weight: 400; letter-spacing: 0; }

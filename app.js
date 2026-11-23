@@ -185,6 +185,14 @@ function dateNumber(ukDate) {
   return Number(`${y}${(m || "").padStart(2, "0")}${(d || "").padStart(2, "0")}`) || 0;
 }
 
+// "23/11/2026" → "November 2026"
+const MONTHS = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+function monthLabel(ukDate) {
+  const [, m, y] = String(ukDate).split("/");
+  return MONTHS[Number(m) - 1] ? `${MONTHS[Number(m) - 1]} ${y}` : "Date unknown";
+}
+
 function renderFilms(films) {
   // Films arrive in Sheet order (oldest first). Reverse, then sort by date, so
   // films on the same day keep the most recently logged one at the top.
@@ -199,15 +207,31 @@ function renderFilms(films) {
     const none = Object.assign(document.createElement("li"), { className: "no-match", textContent: "No films match." });
     return filmList.replaceChildren(none);
   }
-  filmList.replaceChildren(...shown.map(film => {
+  // Build the list, adding a month heading (e.g. "July 2026 · 5") whenever the month changes.
+  const items = [];
+  let currentMonth = null;
+  for (const film of shown) {
+    const month = monthLabel(film.d);
+    if (month !== currentMonth) {
+      currentMonth = month;
+      const filmsThatMonth = shown.filter(f => monthLabel(f.d) === month).length;
+      const heading = Object.assign(document.createElement("li"), { className: "month-heading" });
+      heading.append(
+        Object.assign(document.createElement("span"), { textContent: month }),
+        Object.assign(document.createElement("span"), { className: "month-count", textContent: filmsThatMonth })
+      );
+      items.push(heading);
+    }
     const item = document.createElement("li");
+    item.className = "film";
     // textContent (not innerHTML) so a title can never be treated as code.
     const title = Object.assign(document.createElement("span"), { className: "film-title", textContent: film.t });
     const rating = Object.assign(document.createElement("span"), { className: "film-rating", textContent: film.r ?? "–" });
     const date = Object.assign(document.createElement("span"), { className: "film-date", textContent: film.d });
     item.append(title, rating, date);
-    return item;
-  }));
+    items.push(item);
+  }
+  filmList.replaceChildren(...items);
 }
 
 function setListStatus(message, kind = "") {
