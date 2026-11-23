@@ -98,6 +98,7 @@ form.addEventListener("submit", async event => {
     rewatch: rewatchInput.checked
   };
 
+  resultCard.hidden = true;     // clear the last film's result
   saveButton.disabled = true;   // stops a double tap saving the film twice
   setStatus("Saving… (fetching TMDB details too)");
 
@@ -107,8 +108,8 @@ form.addEventListener("submit", async event => {
 
     localStorage.setItem(KEY_STORAGE, key);   // key worked, so remember it on this device
     showKeyFieldIfNeeded();
-    const match = result.match ? ` · TMDB: ${result.match}` : "";
-    setStatus(`Saved ${film.title} (${film.rating ?? "unrated"})${match}`, "ok");
+    setStatus("");
+    showResult(film, result.match);
 
     // Add it to the saved list straight away, so it's on the Seen tab even before a refresh.
     const [y, m, d] = film.date.split("-");
@@ -120,6 +121,36 @@ form.addEventListener("submit", async event => {
     saveButton.disabled = false;
   }
 });
+
+// ---------- TMDB result card ----------
+// After a save, say clearly whether TMDB found the film. It stays until you
+// close it (or save the next film), so a problem can't flash past unnoticed.
+const resultCard = document.getElementById("result");
+document.getElementById("result-close").addEventListener("click", () => { resultCard.hidden = true; });
+
+function showResult(film, match) {
+  match = String(match || "").trim();
+  let kind, heading, detail;
+  if (match === "NO MATCH FOUND") {
+    kind = "warn";
+    heading = "Saved, but TMDB couldn't find it";
+    detail = "Check the spelling. To fix it: correct the title in the Sheet, clear its TMDB Match cell, then run the scraper.";
+  } else if (!match || match === "ERROR" || match.startsWith("TMDB lookup failed")) {
+    kind = "warn";
+    heading = "Saved, but the TMDB lookup failed";
+    detail = "The film is in the Sheet without its details. Run the scraper from the Sheet later to fill them in.";
+  } else {
+    kind = "ok";
+    heading = `Matched: ${match}`;
+    detail = "Check the year looks right. Wrong film? In the Sheet, set its Release Year, clear TMDB Match and run the scraper.";
+  }
+  resultCard.className = "result " + kind;
+  document.getElementById("result-icon").textContent = kind === "ok" ? "✓" : "⚠";
+  document.getElementById("result-heading").textContent = heading;
+  document.getElementById("result-saved").textContent = `${film.title} · ${film.rating ?? "unrated"} · saved to your Sheet`;
+  document.getElementById("result-detail").textContent = detail;
+  resultCard.hidden = false;
+}
 
 // ---------- Talking to the Apps Script ----------
 // Used for both saving and listing. Sending the body as a plain string keeps

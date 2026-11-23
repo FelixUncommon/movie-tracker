@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#121014">
 
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <!-- Two screens ("views"): only one is shown at a time, switched by the tab bar below. -->
@@ -55,6 +55,17 @@
 
       <button type="submit" id="save" class="save">Save film</button>
       <p id="status" role="status"></p>
+
+      <!-- After a save: did TMDB find the film? Filled in by showResult() in app.js. -->
+      <div id="result" class="result" role="status" hidden>
+        <span id="result-icon" class="result-icon"></span>
+        <div>
+          <p id="result-heading" class="result-heading"></p>
+          <p id="result-saved" class="result-saved"></p>
+          <p id="result-detail" class="result-detail"></p>
+        </div>
+        <button type="button" id="result-close" class="result-close" aria-label="Dismiss">×</button>
+      </div>
     </form>
 
     <button type="button" id="forget-key" class="link">Change key</button>
@@ -81,9 +92,9 @@
     <button type="button" class="tab" data-view="stats-view" aria-pressed="false">Stats</button>
   </nav>
 
-  <!-- "?v=5" makes phones fetch the new files instead of reusing old saved copies.
+  <!-- "?v=6" makes phones fetch the new files instead of reusing old saved copies.
        Bump the number whenever you change these files. -->
-  <script src="config.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
