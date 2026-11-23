@@ -1,5 +1,7 @@
 # Movie tracker
 
+**Live at https://felixuncommon.github.io/movie-tracker/** (GitHub Pages, from the `main` branch). Installed on my iPhone via Safari → Share → Add to Home Screen.
+
 Log a film from my phone in a few taps. Each save adds a row to the "Raw" tab of the cinema Google Sheet, then runs the TMDB scraper so the details fill in straight away.
 
 ## How it fits together
@@ -24,3 +26,6 @@ Log a film from my phone in a few taps. Each save adds a row to the "Raw" tab of
 
 ## Changing the key
 Change `TRACKER_KEY` in Script Properties, then tap **Change key** in the app and enter the new one.
+
+## Updating the app
+Commit changes, then `git push`. GitHub Pages republishes within a minute or two. The home-screen app may need closing and reopening to pick up changes.
