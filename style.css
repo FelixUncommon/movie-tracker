@@ -24,7 +24,8 @@ body {
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
 }
 
-main { max-width: 480px; margin: 0 auto; padding: 20px; }
+/* Bottom padding leaves room for the tab bar so it never covers content. */
+main { max-width: 480px; margin: 0 auto; padding: 20px 20px calc(90px + env(safe-area-inset-bottom)); }
 
 h1 { font-size: 28px; margin: 12px 0 20px; }
 
@@ -111,4 +112,47 @@ input[type="text"], input[type="date"], input[type="password"] {
   font: inherit;
   font-size: 14px;
   text-decoration: underline;
+}
+
+/* ---------- Tab bar (Log / Seen), fixed to the bottom of the screen ---------- */
+.tabs {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid #2b2530;
+  padding-bottom: env(safe-area-inset-bottom);   /* clears the iPhone home bar */
+}
+.tab {
+  flex: 1;
+  font: inherit;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 14px 0;
+}
+.tab[aria-pressed="true"] { color: var(--accent); }
+
+/* ---------- Seen list ---------- */
+.count { color: var(--muted); font-weight: 400; font-size: 20px; }
+.list-status { color: var(--muted); font-size: 14px; min-height: 1.2em; margin: -10px 0 10px; }
+.list-status.error { color: var(--error); }
+
+.film-list { list-style: none; margin: 0; padding: 0; }
+.film-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;   /* title takes the space, rating sits on the right */
+  align-items: center;
+  gap: 2px 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #2b2530;
+}
+.film-title { font-weight: 600; }
+.film-date { grid-column: 1; color: var(--muted); font-size: 14px; }
+.film-rating {
+  grid-column: 2; grid-row: 1 / span 2;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 20px;
 }

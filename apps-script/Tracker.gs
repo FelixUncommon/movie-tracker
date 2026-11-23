@@ -1,4 +1,4 @@
-// Movie tracker: lets the phone app add a film to the "Raw" tab.
+// Movie tracker: lets the phone app add a film to the "Raw" tab, and list the films seen so far.
 //
 // This goes in the SAME Apps Script project as the TMDB scraper (the Sheet's
 // Extensions → Apps Script), as a second file next to Code.gs. Being in the
@@ -18,7 +18,8 @@ function doGet() {
   return reply_({ ok: true, message: "Movie tracker is running." });
 }
 
-// The phone app sends: { key, title, date: "YYYY-MM-DD", rating, rewatch }
+// Every request from the phone app arrives here. It always includes the key,
+// plus an "action": "list" asks for the films seen so far; anything else adds a film.
 function doPost(e) {
   let data;
   try {
@@ -27,13 +28,51 @@ function doPost(e) {
     return reply_({ ok: false, error: "Couldn't read the request." });
   }
 
-  // 1. Check the secret key before doing anything else.
+  // Check the secret key before doing anything else.
   const key = PropertiesService.getScriptProperties().getProperty("TRACKER_KEY");
   if (!key || data.key !== key) {
     return reply_({ ok: false, error: "Wrong key." });
   }
 
-  // 2. Check the film details make sense.
+  if (data.action === "list") return listFilms_();
+  return addFilm_(data);
+}
+
+// Sends back every film as { t: title, r: rating, d: "DD/MM/YYYY" }, in Sheet order.
+// Short names keep the reply small, which matters on a weak phone signal.
+function listFilms_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TRACKER_TAB);
+    if (!sheet) throw new Error('Worksheet "' + TRACKER_TAB + '" not found.');
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0].map(h => String(h).trim());
+    const at = name => {
+      const index = headers.indexOf(name);
+      if (index === -1) throw new Error("Missing column: " + name);
+      return index;
+    };
+    const titleAt = at("Movie Title"), ratingAt = at("Rating"), dateAt = at("Date Watched");
+    const timeZone = Session.getScriptTimeZone();
+
+    const films = values.slice(1)
+      .filter(row => String(row[titleAt]).trim() !== "")
+      .map(row => {
+        const date = row[dateAt];
+        return {
+          t: String(row[titleAt]).trim(),
+          r: row[ratingAt] === "" ? null : Number(row[ratingAt]),
+          d: date instanceof Date ? Utilities.formatDate(date, timeZone, "dd/MM/yyyy") : String(date)
+        };
+      });
+    return reply_({ ok: true, films: films });
+  } catch (err) {
+    return reply_({ ok: false, error: String(err.message || err) });
+  }
+}
+
+// data is: { key, title, date: "YYYY-MM-DD", rating, rewatch }
+function addFilm_(data) {
+  // 1. Check the film details make sense.
   const title = String(data.title || "").trim();
   const rating = Number(data.rating);
   const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(data.date || ""));
@@ -44,7 +83,7 @@ function doPost(e) {
   }
   const [, year, month, day] = dateParts;
 
-  // 3. Add the row. The lock stops two saves at once from grabbing the same row.
+  // 2. Add the row. The lock stops two saves at once from grabbing the same row.
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   let sheet, newRow, col;
@@ -108,7 +147,7 @@ function doPost(e) {
     lock.releaseLock();
   }
 
-  // 4. Run the TMDB scraper now. If TMDB fails, the film is still saved.
+  // 3. Run the TMDB scraper now. If TMDB fails, the film is still saved.
   let match = "";
   try {
     populateMovieData();

@@ -17,10 +17,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#121014">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
-  <main>
+  <!-- Two screens ("views"): only one is shown at a time, switched by the tab bar below. -->
+  <main id="log-view">
     <h1>Log a film</h1>
 
     <form id="film-form" autocomplete="off">
@@ -59,7 +60,21 @@
     <button type="button" id="forget-key" class="link">Change key</button>
   </main>
 
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <main id="seen-view" hidden>
+    <h1>Seen <span id="film-count" class="count"></span></h1>
+    <p id="list-status" class="list-status" role="status"></p>
+    <!-- Filled in by app.js: one <li> per film, newest first. -->
+    <ol id="film-list" class="film-list"></ol>
+  </main>
+
+  <nav class="tabs">
+    <button type="button" class="tab" data-view="log-view" aria-pressed="true">Log</button>
+    <button type="button" class="tab" data-view="seen-view" aria-pressed="false">Seen</button>
+  </nav>
+
+  <!-- "?v=2" makes phones fetch the new files instead of reusing old saved copies.
+       Bump the number whenever you change these files. -->
+  <script src="config.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
