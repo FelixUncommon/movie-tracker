@@ -1,0 +1,2106 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cinema Diary</title>
+  <!-- Tab icon: a tiny SVG drawn in the line itself, showing the ticket emoji. Swap the emoji to change it. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎟️</text></svg>">
+
+  <!--
+    CSS: how things look.
+    The variables in :root are the "design tokens". Change a colour or font here
+    and it changes everywhere it's used. Try swapping --accent or --bg.
+  -->
+  <!--
+    Fonts from Google Fonts: Fraunces, a serif with lots of character, for headlines
+    and big numbers (the "magazine" voice), and Inter, a clean sans-serif, for
+    everything you read at small sizes, including the chart labels.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #f5f0e6;        /* warm, paper-like background */
+      --ink: #1a1714;       /* near-black text */
+      --muted: #6b645a;     /* secondary text */
+      --rule: #d8cfbf;      /* thin dividing lines */
+      --accent: #b3261e;    /* cinema-seat red, used sparingly */
+      --serif: "Fraunces", Georgia, serif;
+      --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 40px 16px 64px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    /* ---- Masthead: the top of the page, styled like a magazine cover line ---- */
+    .masthead {
+      border-bottom: 3px double var(--ink); /* a classic newspaper double rule */
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    /* Small uppercase labels above headings are called "kickers". */
+    .kicker {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: clamp(2.6rem, 8vw, 4.5rem); /* scales with the screen, within limits */
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin: 8px 0 12px;
+    }
+
+    .subtitle {
+      font-family: var(--serif);
+      font-size: 1.2rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* ---- KPI strip: big numbers, separated by rules rather than boxes ---- */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 2 across on a phone… */
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    /* …and 4 across from 700px, so there's never a lonely one on its own row. */
+    @media (min-width: 700px) {
+      .kpis {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .kpi {
+      border-top: 2px solid var(--ink);
+      padding-top: 12px;
+    }
+
+    .kpi-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .kpi-value {
+      font-family: var(--serif);
+      font-size: 3.5rem;
+      font-weight: 600;
+      line-height: 1.1;
+      margin: 4px 0;
+      font-variant-numeric: lining-nums;
+    }
+
+    .kpi-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ---- Chart sections: flat on the page, divided by a thin rule ---- */
+    .panel {
+      border-top: 1px solid var(--rule);
+      padding-top: 24px;
+      margin-top: 40px;
+    }
+
+    .panel h2 {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 1.6rem;
+      line-height: 1.2;
+      margin: 6px 0 6px;
+    }
+
+    .panel p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 60ch; /* keep lines short enough to read comfortably */
+    }
+
+    /* Chart.js fills its container, so the container sets the chart's height. */
+    .chart-box {
+      position: relative;
+      height: 340px;
+    }
+
+    /* Taller box for the scatter plots, which need more room. */
+    .chart-box.tall {
+      height: 460px;
+    }
+
+    /* The headline chart gets a little more height. */
+    .feature .chart-box {
+      height: 400px;
+    }
+
+    /*
+      Pairs: one column by default (phones), two columns once the screen is
+      at least 900px wide. This "@media" rule is how pages adapt to screen size.
+      Try changing 900px and resizing the window.
+    */
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr;
+      column-gap: 48px;
+    }
+
+    @media (min-width: 900px) {
+      .pair {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* ---- Ranked lists (People and Disagreements) ---- */
+    .trio {
+      display: grid;
+      grid-template-columns: 1fr;
+      column-gap: 48px;
+    }
+
+    @media (min-width: 900px) {
+      .trio {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .panel h3 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 8px 0 4px;
+    }
+
+    .ranked {
+      list-style: none; /* we draw our own numbers */
+      margin: 0 0 24px;
+      padding: 0;
+    }
+
+    /* Each row: a fixed-width column for the number, the rest for the text. */
+    .ranked li {
+      display: grid;
+      grid-template-columns: 2.6rem 1fr auto;
+      align-items: baseline;
+      gap: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .ranked .rank,
+    .ranked .big {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .ranked .rank {
+      color: var(--muted);
+    }
+
+    .ranked .name {
+      font-weight: 600;
+    }
+
+    .ranked .meta,
+    .ranked .films {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .ranked .films {
+      font-style: italic;
+    }
+
+    .ranked .empty,
+    .ranked .more {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-bottom: none;
+    }
+
+    /* ---- Clickable names and the detail panel (People) ---- */
+    /* A <button> that looks like text: strip the browser's button styling. */
+    .name-link {
+      font: inherit;
+      font-weight: 600;
+      color: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-align: left;
+      text-decoration: underline dotted var(--rule);
+      text-underline-offset: 4px;
+    }
+
+    .name-link:hover,
+    .name-link[aria-expanded="true"] {
+      color: var(--accent);
+      text-decoration-color: currentColor;
+    }
+
+    .person-panel {
+      margin: 8px 0 24px;
+      padding: 24px;
+      background: #fbf7ef;
+      border-top: 2px solid var(--ink);
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px 48px;
+    }
+
+    @media (min-width: 900px) {
+      .person-panel {
+        grid-template-columns: 1fr 1.4fr; /* same split as the film card */
+      }
+    }
+
+    .person-panel[hidden] {
+      display: none;
+    }
+
+    .person-panel .close {
+      float: right;
+      font: 1.4rem var(--sans);
+      line-height: 1;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .person-panel .close:hover {
+      color: var(--ink);
+    }
+
+    .person-facts {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 16px 0 0;
+      padding-left: 1.1em;
+    }
+
+    .person-facts li {
+      margin-bottom: 4px;
+    }
+
+    /* The film list: a plain table, numbers right-aligned so they line up. */
+    .person-films {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .person-films th {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: left;
+      padding: 0 0 6px;
+    }
+
+    .person-films td {
+      padding: 8px 0;
+      border-top: 1px solid var(--rule);
+      vertical-align: baseline;
+    }
+
+    .person-films .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums; /* every digit the same width */
+      padding-left: 12px;
+      white-space: nowrap;
+    }
+
+    .person-films .when {
+      color: var(--muted);
+      white-space: nowrap;
+      padding-right: 12px;
+    }
+
+    /* ---- Film finder ---- */
+    .finder-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .finder-input {
+      width: 100%;
+      max-width: 480px;
+      box-sizing: border-box; /* include padding in the width, so it never overflows */
+      font: 1.1rem var(--serif);
+      color: var(--ink);
+      background: #fffdf8;
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .film-card {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px 48px;
+    }
+
+    @media (min-width: 900px) {
+      .film-card {
+        grid-template-columns: 1fr 1.4fr; /* headline on the left, details on the right */
+      }
+    }
+
+    .film-card h3.film-title,
+    .person-panel h3.film-title {
+      font-family: var(--serif);
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      color: var(--ink);
+      margin: 4px 0 8px;
+    }
+
+    .film-when {
+      color: var(--muted);
+      margin: 0 0 20px;
+    }
+
+    /* The two scores, side by side, in big serif numbers. */
+    .scores {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .score-value {
+      font-family: var(--serif);
+      font-size: 3rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .score-value small {
+      font-size: 1.1rem;
+      color: var(--muted);
+    }
+
+    .score-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    /* The details: a label column and a value column. */
+    .film-facts {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      margin: 0;
+    }
+
+    .film-facts dt,
+    .film-facts dd {
+      padding: 9px 0;
+      border-bottom: 1px solid var(--rule);
+      margin: 0;
+    }
+
+    .film-facts dt {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-top: 11px;
+    }
+
+    .source {
+      border-top: 1px solid var(--rule);
+      margin-top: 48px;
+      padding-top: 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ---- Year filter: a row of pill buttons; the chosen one is filled in ---- */
+    .filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: -8px 0 32px;
+    }
+
+    .filter button {
+      font: 600 0.85rem var(--sans);
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--ink);
+      border-radius: 999px; /* fully rounded ends */
+      padding: 6px 16px;
+      cursor: pointer;
+    }
+
+    .filter button:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    /* aria-pressed="true" marks the chosen button, for screen readers and for styling */
+    .filter button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--bg);
+    }
+
+    .error {
+      background: #fde8e6;
+      color: #7a1712;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    /* ---- Calendar heatmap (drawn by D3) ---- */
+    /* The SVG has a viewBox, so it scales to the width of the page like an image. */
+    .calendar svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* SVG shapes use "fill" instead of "background". Try a different colour. */
+    .calendar .day {
+      fill: #e9e2d5;
+    }
+
+    /* Days still to come this year: fainter, so the "now" edge shows. */
+    .calendar .day.future {
+      fill: #efe9de;
+    }
+
+    .calendar .day.seen {
+      cursor: pointer;
+    }
+
+    /* The year above each calendar, in the headline serif. */
+    .calendar-year {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin: 16px 0 4px;
+    }
+
+    /* The hover box. "position: fixed" places it relative to the window,
+       so JavaScript can put it wherever the pointer is. */
+    .calendar-tip {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none; /* so it never gets in the way of the pointer */
+      background: rgba(26, 23, 20, 0.92);
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      max-width: 260px;
+    }
+
+    .calendar-tip[hidden] {
+      display: none;
+    }
+
+    .tip-date {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* ---- Days of the week (under the calendar) ---- */
+    .weekdays-title {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin: 32px 0 4px;
+    }
+
+    /* Keep the bars from stretching across a wide screen. */
+    .weekdays {
+      max-width: 520px;
+    }
+
+    .weekdays .bar {
+      fill: #4a4540; /* charcoal, like the other single-colour charts */
+    }
+
+    .weekdays .bar.top {
+      fill: var(--accent); /* the busiest day stands out in red */
+    }
+
+    .weekdays text {
+      font-size: 11px;
+    }
+
+    .calendar text {
+      font-family: var(--sans);
+      font-size: 10px;
+      fill: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <!--
+    HTML: the structure. Each card is an empty shell with an id;
+    the JavaScript below fills in the numbers once the CSV has loaded.
+  -->
+  <main>
+    <header class="masthead">
+      <div class="kicker">A personal record</div>
+      <h1>Cinema Diary</h1>
+      <p class="subtitle" id="subtitle">Loading films…</p>
+    </header>
+
+    <!-- The year filter. The buttons are added by JavaScript, one per year in the data. -->
+    <nav class="filter" id="year-filter" aria-label="Choose a year"></nav>
+
+    <div id="errors"></div>
+
+    <section class="kpis">
+      <article class="kpi">
+        <div class="kpi-label">Films seen</div>
+        <div class="kpi-value" id="kpi-films">–</div>
+        <div class="kpi-note" id="kpi-films-note"></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-label">Hours watched</div>
+        <div class="kpi-value" id="kpi-hours">–</div>
+        <div class="kpi-note" id="kpi-hours-note"></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-label">Average rating</div>
+        <div class="kpi-value" id="kpi-rating">–</div>
+        <div class="kpi-note" id="kpi-rating-note"></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-label">Top rated</div>
+        <div class="kpi-value" id="kpi-top">–</div>
+        <div class="kpi-note" id="kpi-top-note"></div>
+      </article>
+    </section>
+
+    <section class="panel feature">
+      <div class="kicker">01 · Pace</div>
+      <h2>Films seen through the year</h2>
+      <p>Running total, one line per year, so you can see whether this year is ahead of last.</p>
+      <div class="chart-box">
+        <canvas id="chart-cumulative" aria-label="Cumulative films seen by day of year, one line per year"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="kicker">02 · Rhythm</div>
+      <h2>Films per month</h2>
+      <p id="monthly-note">How often I go, month by month, with the years side by side.</p>
+      <div class="chart-box">
+        <canvas id="chart-monthly" aria-label="Films seen per month, one bar per year"></canvas>
+      </div>
+    </section>
+
+    <!-- The calendar is drawn by D3 as an SVG (shapes), not a Chart.js canvas (pixels). -->
+    <section class="panel">
+      <div class="kicker">03 · Calendar</div>
+      <h2 id="calendar-title">Every day of the year</h2>
+      <p id="calendar-note">One square per day, Monday at the top.</p>
+      <div id="calendar" class="calendar"></div>
+      <div id="calendar-tip" class="calendar-tip" hidden></div>
+
+      <!-- A small bar chart, also drawn by D3, reusing the calendar's text style. -->
+      <h3 class="weekdays-title">By day of the week</h3>
+      <p id="weekdays-note"></p>
+      <div id="weekdays" class="calendar weekdays"></div>
+    </section>
+
+    <!-- Pairs of charts: side by side on wide screens, stacked on narrow ones. -->
+    <div class="pair">
+      <section class="panel">
+        <div class="kicker">04 · Ratings</div>
+        <h2>How I rate films</h2>
+        <p id="ratings-note">Each bar is a score out of 10.</p>
+        <div class="chart-box">
+          <canvas id="chart-ratings" aria-label="Number of films at each rating"></canvas>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="kicker">05 · Runtime</div>
+        <h2>How long the films were</h2>
+        <p id="runtime-note">Films grouped by runtime, in 15-minute bands.</p>
+        <div class="chart-box">
+          <canvas id="chart-runtime" aria-label="Number of films in each 15-minute runtime band"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <div class="pair">
+      <section class="panel">
+        <div class="kicker">06 · Taste</div>
+        <h2>Me vs TMDB</h2>
+        <p id="tmdb-note">Each dot is a film. Above the dashed line, I liked it more than TMDB users did.</p>
+        <div class="chart-box tall">
+          <canvas id="chart-tmdb" aria-label="Scatter plot of my rating against the TMDB rating for each film"></canvas>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="kicker">07 · Genres</div>
+        <h2>Genre vs rating</h2>
+        <p id="genre-note">Each dot is a film I rated. Films with several genres appear once in each.</p>
+        <div class="chart-box" id="genre-box">
+          <canvas id="chart-genre" aria-label="My ratings for each genre, sorted by average rating"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="kicker">08 · People</div>
+      <h2>The usual suspects</h2>
+      <p>The directors, actors and studios I've seen most. Actors are the top-billed cast, and a co-production counts for each of its studios. Ties are ordered by my average rating. Click a name for the details.</p>
+      <div class="trio">
+        <div>
+          <h3>Directors</h3>
+          <ol class="ranked" id="list-directors"></ol>
+        </div>
+        <div>
+          <h3>Actors</h3>
+          <ol class="ranked" id="list-actors"></ol>
+        </div>
+        <div>
+          <h3>Studios</h3>
+          <ol class="ranked" id="list-studios"></ol>
+        </div>
+      </div>
+      <!-- Filled in by JavaScript when a name is clicked. "hidden" keeps it out of sight until then. -->
+      <div id="person-panel" class="person-panel" hidden></div>
+    </section>
+
+    <section class="panel">
+      <div class="kicker">09 · Disagreements</div>
+      <h2>Where TMDB and I part ways</h2>
+      <p>The films where my score was furthest from the TMDB average, in each direction.</p>
+      <div class="pair">
+        <div>
+          <h3>I liked it more</h3>
+          <ol class="ranked" id="list-kinder"></ol>
+        </div>
+        <div>
+          <h3>TMDB liked it more</h3>
+          <ol class="ranked" id="list-harsher"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="kicker">10 · Film finder</div>
+      <h2>Look up a film</h2>
+      <p>Start typing a title and pick it from the list.</p>
+
+      <!--
+        A text box joined to a <datalist> (via list="film-options") becomes a
+        searchable dropdown: the browser filters the options as you type.
+      -->
+      <label class="finder-label" for="film-search">Film</label>
+      <input class="finder-input" id="film-search" type="search" list="film-options"
+             placeholder="Type a film title…" autocomplete="off">
+      <datalist id="film-options"></datalist>
+
+      <article class="film-card" id="film-card" aria-live="polite"></article>
+    </section>
+
+    <footer class="source" id="source"></footer>
+  </main>
+
+  <!--
+    Chart.js, loaded from a CDN (a public server that hosts libraries).
+    The exact version number is pinned, so an update can't change the page unexpectedly.
+  -->
+  <!-- The Apps Script address, shared with the Film log app. -->
+  <script src="config.js?v=5"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- D3, for the calendar. Loaded the same way, version pinned too. -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+
+  <!-- JavaScript: load the data, crunch the numbers, put them on the page. -->
+  <script>
+    // ---------- 0. Where the data comes from ----------
+
+    // This copy lives in the Film log app on GitHub Pages, which is public, so it
+    // must not contain the Sheet's address. Instead it asks the Film log's Apps
+    // Script (SCRIPT_URL, from config.js) for the Raw tab as CSV, using the same
+    // passphrase as the app. Both pages are on the same website, so they share it.
+    const KEY_STORAGE = "movieTrackerKey";
+    const CSV_CACHE = "movieTrackerCsv";   // last good copy, for when the Sheet can't be reached
+
+    // ---------- 1. Turning CSV text into rows ----------
+
+    // Splits CSV text into an array of arrays. It respects quotes, so a cell
+    // like "Music, Drama" stays as one cell instead of splitting at the comma.
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuotes) {
+          if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } // "" = a literal quote
+          else if (ch === '"') inQuotes = false;
+          else cell += ch;
+        } else if (ch === '"') inQuotes = true;
+        else if (ch === ",") { row.push(cell); cell = ""; }
+        else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+        else if (ch !== "\r") cell += ch;
+      }
+      if (cell || row.length) { row.push(cell); rows.push(row); } // last line, no newline
+      return rows;
+    }
+
+    // Turns [[header...], [values...], ...] into objects keyed by column name,
+    // e.g. { "Movie Title": "Better Man", "Rating": "9", ... }.
+    // Using names (not positions) means new or reordered columns won't break anything.
+    function toObjects(rows) {
+      const headers = rows[0].map(h => h.trim());
+      return rows.slice(1)
+        .filter(r => r.some(cell => cell.trim() !== "")) // skip blank lines
+        .map(r => Object.fromEntries(headers.map((h, i) => [h, (r[i] ?? "").trim()])));
+    }
+
+    // ---------- 2. Cleaning individual values ----------
+
+    // "7.5" -> 7.5, "" -> null. null means "no value", so it can be left
+    // out of averages rather than counted as a zero.
+    function toNumber(value) {
+      if (value === undefined || value === "") return null;
+      const n = Number(value);
+      return Number.isNaN(n) ? null : n;
+    }
+
+    // UK dates: "18/01/2025" -> a real Date. new Date("18/01/2025") would
+    // read it as month 18, so we split it up ourselves.
+    function parseUKDate(value) {
+      const [day, month, year] = (value || "").split("/").map(Number);
+      if (!day || !month || !year) return null;
+      return new Date(year, month - 1, day); // JavaScript months start at 0
+    }
+
+    // ---------- 3. Load, check and draw ----------
+
+    const REQUIRED_COLUMNS = ["Movie Title", "Rating", "Date Watched", "Runtime (mins)"];
+
+    function showError(message) {
+      const div = document.createElement("div");
+      div.className = "error";
+      div.textContent = message;
+      document.getElementById("errors").append(div);
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    // Ask the Apps Script for the CSV. If this device doesn't have the passphrase
+    // yet (e.g. a laptop browser), ask for it once.
+    async function fetchFromScript() {
+      let key = localStorage.getItem(KEY_STORAGE);
+      if (!key) key = (prompt("Film log passphrase") || "").trim();
+      if (!key) throw new Error("no passphrase entered");
+
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ key, action: "csv" }),   // plain-text body: a "simple" request
+        signal: AbortSignal.timeout(30000)
+      });
+      const result = await response.json();
+      if (!result.ok) {
+        if (result.error === "Wrong key.") localStorage.removeItem(KEY_STORAGE);
+        throw new Error(result.error || "the script returned an error");
+      }
+      if (!result.csv.includes("Movie Title")) throw new Error("that doesn't look like the film data");
+
+      localStorage.setItem(KEY_STORAGE, key);
+      localStorage.setItem(CSV_CACHE, result.csv);
+      return result.csv;
+    }
+
+    // Try the live Sheet first, then fall back to the copy saved on this device.
+    async function loadData() {
+      const started = performance.now();
+      try {
+        const text = await fetchFromScript();
+        const seconds = ((performance.now() - started) / 1000).toFixed(1);
+        return { text, source: `the live Google Sheet (took ${seconds}s)` };
+      } catch (err) {
+        const cached = localStorage.getItem(CSV_CACHE);
+        if (!cached) throw err;
+        showError(`Couldn't reach the Sheet (${err.message}), so this is the copy saved on this device, which may be out of date.`);
+        return { text: cached, source: "the copy saved on this device" };
+      }
+    }
+
+    async function init() {
+      let text, source;
+      try {
+        ({ text, source } = await loadData());
+      } catch (err) {
+        setText("subtitle", "Couldn't load the film data.");
+        showError(`Couldn't load the film data (${err.message}). Check your signal, or re-enter the passphrase in the Film log app.`);
+        return;
+      }
+
+      // Say where the numbers came from, and when, at the foot of the page.
+      const now = new Date().toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      setText("source", `Data from ${source}, loaded ${now}.`);
+
+      const films = toObjects(parseCSV(text));
+
+      // Fail gracefully: warn about any missing columns, but carry on with what we have.
+      const missing = REQUIRED_COLUMNS.filter(col => !(col in films[0]));
+      if (missing.length) showError("Missing column(s) in the CSV: " + missing.join(", "));
+
+      // Give each film tidy, typed fields to work with.
+      films.forEach(f => {
+        f.title = f["Movie Title"] || "Untitled";
+        f.rating = toNumber(f["Rating"]);
+        f.runtime = toNumber(f["Runtime (mins)"]);
+        f.date = parseUKDate(f["Date Watched"]);
+        f.tmdb = toNumber(f["TMDB Rating"]);
+        f.genres = (f["Genre"] || "").split(",").map(g => g.trim()).filter(Boolean);
+      });
+
+      // Keep the full list, so the year filter can always go back to "All".
+      allFilms = films;
+      const years = [...new Set(films.filter(f => f.date).map(f => f.date.getFullYear()))].sort();
+      LATEST_YEAR = years[years.length - 1];
+
+      // If the CDN couldn't be reached, Chart won't exist: say so rather than crash.
+      chartsAvailable = typeof Chart !== "undefined";
+      if (!chartsAvailable) {
+        showError("Couldn't load Chart.js, so the charts are missing. Are you offline?");
+      } else {
+        // Charts are drawn as pixels on a <canvas>, so they can't restyle themselves
+        // when a web font arrives later. Wait until the fonts have loaded first.
+        await document.fonts.ready;
+
+        // Settings every chart shares, set once here instead of in each chart.
+        Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+        Chart.defaults.color = "#6f6a63";                    // axis and legend text
+        Chart.defaults.borderColor = "rgba(0, 0, 0, 0.06)";  // grid lines
+        Chart.defaults.maintainAspectRatio = false;          // let .chart-box set the height
+      }
+
+      buildYearFilter(years);
+      buildFilmFinder();
+
+      // Start on the year in the address (e.g. ...:8000/#2025), so a refresh
+      // keeps your choice. Otherwise start on "all".
+      const fromAddress = location.hash.slice(1);
+      render(years.map(String).includes(fromAddress) ? Number(fromAddress) : "all");
+    }
+
+    // ---------- 3b. The year filter ----------
+
+    // "State": the few facts the page needs to remember between clicks.
+    let allFilms = [];
+    let LATEST_YEAR;
+    let chartsAvailable = false;
+    let selectedYear = "all";
+
+    // One button per year, plus "All years".
+    function buildYearFilter(years) {
+      const nav = document.getElementById("year-filter");
+      ["all", ...years].forEach(year => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.year = year;
+        button.textContent = year === "all" ? "All years" : year;
+        button.addEventListener("click", () => render(year)); // a click re-draws everything for that year
+        nav.append(button);
+      });
+    }
+
+    // The heart of the filter: pick the films for the chosen year, then
+    // redraw every number and chart from just those films.
+    function render(year) {
+      selectedYear = year;
+      const films = year === "all" ? allFilms : allFilms.filter(f => f.date && f.date.getFullYear() === year);
+
+      // Show which button is chosen, and put the year in the address bar.
+      document.querySelectorAll("#year-filter button").forEach(b =>
+        b.setAttribute("aria-pressed", b.dataset.year === String(year)));
+      history.replaceState(null, "", year === "all" ? location.pathname : `#${year}`);
+
+      renderKPIs(films);
+      renderPeople(films);        // plain HTML lists, so these work even without Chart.js
+      renderDisagreements(films);
+      renderCalendar(films);      // drawn by D3, so it works without Chart.js too
+      renderWeekdays(films);
+      if (chartsAvailable) {
+        renderCumulative(films);
+        renderRatings(films);
+        renderMonthly(films);
+        renderRuntime(films);
+        renderTMDB(films);
+        renderGenres(films);
+      }
+    }
+
+    // ---------- The calendar heatmap (D3) ----------
+
+    // D3 doesn't have "chart types". It takes a list of data and makes one shape
+    // per item, wherever you tell it. Here: one list item per day, one square each.
+    // "All years" draws one calendar per year; a single year draws just that one.
+    function renderCalendar(films) {
+      const box = document.getElementById("calendar");
+      if (typeof d3 === "undefined") {
+        box.textContent = "Couldn't load D3, so the calendar is missing.";
+        return;
+      }
+
+      // Group the films by day, so each square can look up its films.
+      // The key is the date as text, e.g. "2026-11-08".
+      const dayKey = d3.timeFormat("%Y-%m-%d");
+      const filmsByDay = d3.group(films.filter(f => f.date), f => dayKey(f.date));
+
+      const years = selectedYear === "all"
+        ? [...new Set(allFilms.filter(f => f.date).map(f => f.date.getFullYear()))].sort()
+        : [selectedYear];
+
+      box.replaceChildren(); // start fresh: remove the old calendars
+      hideCalendarTip();     // in case a tooltip was showing when the year changed
+      years.forEach(year => drawYear(box, year, filmsByDay, dayKey));
+
+      // The sentence above the calendar, worked out from the data.
+      const days = [...filmsByDay.values()];
+      const doubles = days.filter(list => list.length > 1).length;
+      document.getElementById("calendar-title").textContent =
+        selectedYear === "all" ? "Every day at a glance" : `Every day of ${selectedYear}`;
+      setText("calendar-note",
+        `Each filled square is a day I went to the cinema: ${days.length} days in all` +
+        (doubles ? `, ${doubles} of them double bills (the darker squares).` : ".") +
+        ` Hover over a square to see the film.`);
+    }
+
+    function drawYear(box, year, filmsByDay, dayKey) {
+      const CELL = 12;   // size of each square, in SVG units
+      const GAP = 3;     // space between squares
+      const STEP = CELL + GAP;
+      const LEFT = 30;   // room for the weekday labels
+      const TOP = 20;    // room for the month labels
+      const colour = yearColour(year, LATEST_YEAR); // same colour as the year's line and bars
+      const today = new Date();
+
+      // Every day of the year, 1 Jan to 31 Dec. d3.timeDay.range makes the list for us.
+      const yearStart = new Date(year, 0, 1);
+      const days = d3.timeDay.range(yearStart, new Date(year + 1, 0, 1));
+
+      // Where each day goes. Columns are weeks (starting Monday); rows are weekdays.
+      // getDay() counts Sunday as 0, so shift it to make Monday 0 and Sunday 6.
+      const column = d => d3.timeMonday.count(d3.timeMonday.floor(yearStart), d);
+      const row = d => (d.getDay() + 6) % 7;
+
+      const width = LEFT + (column(new Date(year, 11, 31)) + 1) * STEP;
+      const height = TOP + 7 * STEP;
+
+      box.append(el("div", "calendar-year", String(year)));
+      const svg = d3.select(box).append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("role", "img")
+        .attr("aria-label", `Calendar of ${year}, one square per day, cinema days filled in`);
+
+      // The key D3 pattern: select the (not yet existing) squares, bind the days to
+      // them with .data(), and .join("rect") creates one <rect> per day.
+      const squares = svg.selectAll("rect")
+        .data(days)
+        .join("rect")
+        .attr("x", d => LEFT + column(d) * STEP)
+        .attr("y", d => TOP + row(d) * STEP)
+        .attr("width", CELL)
+        .attr("height", CELL)
+        .attr("rx", 2);   // slightly rounded corners
+
+      // Cinema days get the year's colour: paler for one film, full strength for two.
+      // Days that haven't happened yet are fainter. Try changing the 0.55.
+      squares.each(function (d) {
+        const seen = filmsByDay.get(dayKey(d));
+        const square = d3.select(this);
+        if (seen) {
+          square.attr("class", "day seen")
+            .style("fill", colour)   // .style, not .attr: the CSS rule for .day would beat an attribute
+            .style("fill-opacity", seen.length > 1 ? 1 : 0.55);
+        } else {
+          square.attr("class", d > today ? "day future" : "day");
+        }
+      });
+
+      // Tooltips: show the film(s) when the pointer is over a filled square.
+      svg.selectAll(".seen")
+        .on("pointerenter", (event, d) => showCalendarTip(event, d, filmsByDay.get(dayKey(d))))
+        .on("pointermove", moveCalendarTip)
+        .on("pointerleave", hideCalendarTip);
+
+      // Weekday labels: just Mon, Wed and Fri, to keep it uncluttered.
+      svg.selectAll(".weekday")
+        .data([["Mon", 0], ["Wed", 2], ["Fri", 4]])
+        .join("text")
+        .attr("x", 0)
+        .attr("y", ([, r]) => TOP + r * STEP + CELL - 2)
+        .text(([label]) => label);
+
+      // Month labels, above the week each month starts in.
+      svg.selectAll(".month")
+        .data(d3.timeMonth.range(yearStart, new Date(year + 1, 0, 1)))
+        .join("text")
+        .attr("x", d => LEFT + column(d) * STEP)
+        .attr("y", TOP - 7)
+        .text(d => d3.timeFormat("%b")(d));
+    }
+
+    // One tooltip box for the whole page, moved to wherever the pointer is.
+    function showCalendarTip(event, day, films) {
+      const tip = document.getElementById("calendar-tip");
+      tip.replaceChildren(
+        el("div", "tip-date", day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+        ...films.map(f => el("div", "tip-film", f.title + (f.rating !== null ? ` · ${f.rating}/10` : "")))
+      );
+      tip.hidden = false;
+      moveCalendarTip(event);
+    }
+
+    function moveCalendarTip(event) {
+      const tip = document.getElementById("calendar-tip");
+      // Sit just above and to the right of the pointer, but never off the right edge.
+      const x = Math.min(event.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = `${x}px`;
+      tip.style.top = `${event.clientY - tip.offsetHeight - 12}px`;
+    }
+
+    function hideCalendarTip() {
+      document.getElementById("calendar-tip").hidden = true;
+    }
+
+    // ---------- Days of the week (D3) ----------
+
+    // A horizontal bar per weekday. This introduces D3's "scales": functions that
+    // turn a data value into a position on screen.
+    function renderWeekdays(films) {
+      const box = document.getElementById("weekdays");
+      if (typeof d3 === "undefined") return;
+
+      const NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      // Count films per weekday (a double bill counts as two films).
+      const counts = NAMES.map(name => ({ name, count: 0 }));
+      films.filter(f => f.date).forEach(f => counts[(f.date.getDay() + 6) % 7].count++);
+
+      const total = d3.sum(counts, d => d.count);
+      const most = d3.max(counts, d => d.count);
+      const least = d3.min(counts, d => d.count);
+
+      const WIDTH = 520, ROW = 24, LEFT = 74, RIGHT = 70;
+      const height = ROW * NAMES.length;
+
+      // x: a count of films -> a bar length in SVG units. 0 films is 0 long,
+      // the busiest day reaches the right-hand side (minus room for its label).
+      const x = d3.scaleLinear().domain([0, most || 1]).range([0, WIDTH - LEFT - RIGHT]);
+      // y: a weekday name -> a row position, with a little padding between bars.
+      const y = d3.scaleBand().domain(NAMES).range([0, height]).padding(0.3);
+
+      box.replaceChildren();
+      const svg = d3.select(box).append("svg")
+        .attr("viewBox", `0 0 ${WIDTH} ${height}`)
+        .attr("role", "img")
+        .attr("aria-label", "Films seen on each day of the week: " +
+          counts.map(d => `${d.name} ${d.count}`).join(", "));
+
+      // Same pattern as the calendar: bind the data, one shape per item.
+      svg.selectAll("rect")
+        .data(counts)
+        .join("rect")
+        .attr("class", d => d.count === most && most > 0 ? "bar top" : "bar")
+        .attr("x", LEFT)
+        .attr("y", d => y(d.name))
+        .attr("width", d => x(d.count))
+        .attr("height", y.bandwidth())   // bandwidth = the height of one bar
+        .attr("rx", 2);
+
+      // Day names on the left.
+      svg.selectAll(".day-name")
+        .data(counts)
+        .join("text")
+        .attr("x", 0)
+        .attr("y", d => y(d.name) + y.bandwidth() / 2)
+        .attr("dominant-baseline", "middle")
+        .text(d => d.name);
+
+      // The number at the end of each bar.
+      svg.selectAll(".day-count")
+        .data(counts)
+        .join("text")
+        .attr("x", d => LEFT + x(d.count) + 6)
+        .attr("y", d => y(d.name) + y.bandwidth() / 2)
+        .attr("dominant-baseline", "middle")
+        .text(d => d.count === 1 ? "1 film" : `${d.count} films`);
+
+      // The sentence above, worked out from the data (ties are listed together).
+      const plural = name => name + "s";
+      const join = names => names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names.at(-1) : names[0];
+      const top = counts.filter(d => d.count === most).map(d => plural(d.name));
+      const bottom = counts.filter(d => d.count === least).map(d => plural(d.name));
+      setText("weekdays-note", total === 0 ? "No films yet." : (
+        top.length > 1
+          ? `${join(top)} are joint busiest, with ${most} films each. `
+          : `${top[0]} are my busiest: ${most} films, ${Math.round(most / total * 100)}% of the total. `) +
+        `Quietest: ${join(bottom)} (${least}).`);
+    }
+
+    // A chart can't be drawn twice on the same canvas, so throw away the old one
+    // (if there is one) before drawing the new one.
+    function makeChart(canvasId, config) {
+      Chart.getChart(canvasId)?.destroy();
+      return new Chart(document.getElementById(canvasId), config);
+    }
+
+    function renderKPIs(films) {
+      const dates = films.map(f => f.date).filter(Boolean).sort((a, b) => a - b);
+      const fmt = d => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      if (dates.length) {
+        setText("subtitle", `Every film I've seen at the cinema, ${fmt(dates[0])} to ${fmt(dates[dates.length - 1])}`);
+      }
+
+      // Films seen. The note changes with the filter: how this year is going for
+      // "All years", or the monthly average for a single year.
+      setText("kpi-films", films.length);
+      if (selectedYear === "all") {
+        const seenLatest = films.filter(f => f.date && f.date.getFullYear() === LATEST_YEAR).length;
+        setText("kpi-films-note", `${seenLatest} so far in ${LATEST_YEAR}`);
+      } else if (dates.length) {
+        // A finished year has 12 months; the latest year counts up to its most recent film.
+        const months = selectedYear === LATEST_YEAR ? dates[dates.length - 1].getMonth() + 1 : 12;
+        setText("kpi-films-note", `About ${(films.length / months).toFixed(1)} a month`);
+      }
+
+      // Hours watched: add up every runtime we know, then convert minutes to hours.
+      const timed = films.filter(f => f.runtime !== null);
+      const totalMins = timed.reduce((sum, f) => sum + f.runtime, 0);
+      setText("kpi-hours", Math.round(totalMins / 60));
+      setText("kpi-hours-note", `About ${(totalMins / 60 / 24).toFixed(1)} days in the dark`);
+
+      // Average rating: only films I've actually rated, so blanks don't drag it down.
+      const rated = films.filter(f => f.rating !== null);
+      if (rated.length) {
+        const avg = rated.reduce((sum, f) => sum + f.rating, 0) / rated.length;
+        setText("kpi-rating", avg.toFixed(1));
+        setText("kpi-rating-note", `Out of 10, across ${rated.length} rated films`);
+
+        // Top rated: highest score; ties go to the most recent.
+        const top = rated.reduce((best, f) =>
+          f.rating > best.rating || (f.rating === best.rating && f.date > best.date) ? f : best);
+        const topCount = rated.filter(f => f.rating === top.rating).length;
+        setText("kpi-top", top.rating);
+        setText("kpi-top-note", topCount > 1
+          ? `Most recent: ${top.title} (one of ${topCount})`
+          : top.title);
+      }
+    }
+
+    // ---------- 4. Charts ----------
+
+    // One place for chart colours, and charcoal for charts that aren't split by year.
+    const COLOURS = {
+      latest: "#b3261e",
+      earlier: "#2a78d6",
+      ink: "#4a4540"
+    };
+
+    // Year colours by age: this year is always red, last year blue, and anything
+    // older fades into the background in greys. So red always means "now".
+    const YEAR_COLOURS = [COLOURS.latest, COLOURS.earlier, "#a39b8f", "#c9c1b4"];
+    function yearColour(year, latest) {
+      const age = latest - year; // 0 = this year, 1 = last year…
+      return YEAR_COLOURS[Math.min(age, YEAR_COLOURS.length - 1)];
+    }
+
+    // 1 Jan = day 1, 31 Dec = day 365 (or 366). Putting every year on this
+    // shared 1–366 scale is what lets the years sit on top of each other.
+    function dayOfYear(date) {
+      const jan1 = new Date(date.getFullYear(), 0, 1);
+      return Math.round((date - jan1) / 86400000) + 1; // 86,400,000 ms in a day
+    }
+
+    // Where each month starts on that scale (using a non-leap year), for the x-axis ticks.
+    const MONTH_STARTS = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function renderCumulative(films) {
+      // Group films by the year they were watched: { 2025: [...], 2026: [...] }
+      const byYear = {};
+      films.filter(f => f.date).forEach(f => {
+        const y = f.date.getFullYear();
+        (byYear[y] ??= []).push(f);
+      });
+      const years = Object.keys(byYear).map(Number).sort();
+
+      // One dataset (line) per year. Each point is { x: day of year, y: running total },
+      // and we tuck the title and date in too, for the tooltip.
+      const datasets = years.map(year => {
+        const sorted = byYear[year].sort((a, b) => a.date - b.date);
+        const points = [{ x: 0, y: 0 }]; // start every line at zero on 1 Jan
+        sorted.forEach((f, i) => points.push({ x: dayOfYear(f.date), y: i + 1, title: f.title, date: f.date }));
+
+        const colour = yearColour(year, LATEST_YEAR); // colour follows the year, whatever the filter
+        return {
+          label: String(year),
+          data: points,
+          borderColor: colour,
+          backgroundColor: colour,
+          borderWidth: 2,
+          stepped: true,      // flat until the next film, then a step up: it's a count
+          pointRadius: 0,     // no dots on the line…
+          pointHoverRadius: 5 // …but one appears where you hover
+        };
+      });
+
+      // A tiny home-made plugin: writes the year at the end of each line,
+      // so you don't have to look across to the legend.
+      const endLabels = {
+        id: "endLabels",
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          const LINE_HEIGHT = 16;
+
+          // Work out where each label wants to go: just right of the line's last point.
+          const labels = chart.data.datasets.map((ds, i) => {
+            const last = chart.getDatasetMeta(i).data.at(-1);
+            return last && { text: `${ds.label} · ${ds.data.at(-1).y}`, colour: ds.borderColor, x: last.x + 8, y: last.y };
+          }).filter(Boolean);
+
+          // Stop labels overlapping: go top to bottom and push any label that's
+          // too close to the one above it further down.
+          labels.sort((a, b) => a.y - b.y);
+          for (let i = 1; i < labels.length; i++) {
+            labels[i].y = Math.max(labels[i].y, labels[i - 1].y + LINE_HEIGHT);
+          }
+
+          ctx.save();
+          ctx.font = "600 12px Inter, system-ui, sans-serif";
+          ctx.textBaseline = "middle";
+          labels.forEach(l => {
+            const width = ctx.measureText(l.text).width;
+            // A patch of page colour behind the text, so lines running underneath don't muddle it.
+            ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+            ctx.fillRect(l.x - 3, l.y - 8, width + 16, 16);
+            // A small dot in the line's colour, then the text in ink.
+            ctx.fillStyle = l.colour;
+            ctx.beginPath();
+            ctx.arc(l.x + 2, l.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#1a1714";
+            ctx.fillText(l.text, l.x + 9, l.y);
+          });
+          ctx.restore();
+        }
+      };
+
+      makeChart("chart-cumulative", {
+        type: "line",
+        data: { datasets },
+        plugins: [endLabels],
+        options: {
+          layout: { padding: { right: 80 } },  // room for the end labels
+          interaction: { mode: "nearest", intersect: false }, // hover anywhere near a line
+          scales: {
+            x: {
+              type: "linear",
+              min: 0,
+              max: 366,
+              grid: { display: false },
+              // Replace the automatic number ticks with one tick per month start.
+              afterBuildTicks: axis => { axis.ticks = MONTH_STARTS.map(value => ({ value })); },
+              ticks: { callback: value => MONTH_NAMES[MONTH_STARTS.indexOf(value)] }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(0, 0, 0, 0.06)" },
+              title: { display: true, text: "Films seen" }
+            }
+          },
+          plugins: {
+            legend: { position: "top", align: "end", labels: { boxWidth: 12, boxHeight: 2 } },
+            tooltip: {
+              filter: item => item.raw.title, // skip the 1 Jan starting points
+              callbacks: {
+                title: items => items[0].raw.date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+                label: item => `Film ${item.raw.y} of ${item.dataset.label}: ${item.raw.title}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Rating distribution: how many films got each score.
+    function renderRatings(films) {
+      const rated = films.filter(f => f.rating !== null);
+
+      // Every half-point from the lowest score to 10, so gaps show as empty slots.
+      const lowest = Math.floor(Math.min(...rated.map(f => f.rating)));
+      const scores = [];
+      for (let s = lowest; s <= 10; s += 0.5) scores.push(s);
+      const counts = scores.map(s => rated.filter(f => f.rating === s).length);
+
+      // The most common score(s), for the subtitle. There can be a tie.
+      const most = Math.max(...counts);
+      const modes = scores.filter((s, i) => counts[i] === most);
+      setText("ratings-note", `Each bar is a score out of 10. My most common ` +
+        (modes.length > 1 ? `scores are ${modes.join(" and ")}` : `score is ${modes[0]}`) +
+        `, with ${most} films` + (modes.length > 1 ? " each." : "."));
+
+      makeChart("chart-ratings", {
+        type: "bar",
+        data: {
+          labels: scores,
+          datasets: [{
+            label: "Films",
+            data: counts,
+            backgroundColor: COLOURS.ink,
+            borderRadius: 4,          // rounded tops; the bottom edge stays square
+            categoryPercentage: 0.9   // leaves a small gap between bars
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false }, // one series: the title says what it is
+            tooltip: {
+              callbacks: {
+                title: items => `Rated ${items[0].label}`,
+                label: item => `${item.raw} film${item.raw === 1 ? "" : "s"}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, title: { display: true, text: "My rating" } },
+            y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "Films" } }
+          }
+        }
+      });
+    }
+
+    // Monthly cadence: films per calendar month, a bar for each year.
+    function renderMonthly(films) {
+      const dated = films.filter(f => f.date);
+      const years = [...new Set(dated.map(f => f.date.getFullYear()))].sort();
+
+      // The last month with data, so months still to come show as gaps, not zeros.
+      const lastDate = new Date(Math.max(...dated.map(f => f.date)));
+
+      // A 12-slot count for each year: [Jan, Feb, ..., Dec]
+      const datasets = years.map(year => {
+        const counts = MONTH_NAMES.map((_, month) => {
+          const inFuture = year === lastDate.getFullYear() && month > lastDate.getMonth();
+          if (inFuture) return null; // null = no bar at all
+          return dated.filter(f => f.date.getFullYear() === year && f.date.getMonth() === month).length;
+        });
+        return {
+          label: String(year),
+          data: counts,
+          backgroundColor: yearColour(year, LATEST_YEAR),
+          borderRadius: 4
+        };
+      });
+
+      // The busiest month(s) overall, for the subtitle. Ties are listed together.
+      const allMonths = datasets.flatMap(ds =>
+        ds.data.map((count, m) => ({ count, label: `${MONTH_NAMES[m]} ${ds.label}` })));
+      const top = Math.max(...allMonths.map(m => m.count));
+      const busiest = allMonths.filter(m => m.count === top).map(m => m.label);
+      setText("monthly-note", (selectedYear === "all" ? `How often I go, with the years side by side. ` : `How often I go, month by month. `) +
+        `Busiest: ${busiest.join(" and ")}, with ${top} films.`);
+
+      makeChart("chart-monthly", {
+        type: "bar",
+        data: { labels: MONTH_NAMES, datasets },
+        options: {
+          interaction: { mode: "index", intersect: false }, // hover a month to see every year
+          plugins: {
+            legend: { position: "top", align: "end", labels: { boxWidth: 12, boxHeight: 12 } },
+            tooltip: { callbacks: { label: item => `${item.dataset.label}: ${item.raw} films` } }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "Films" } }
+          }
+        }
+      });
+    }
+
+    // Runtime: a histogram, i.e. films sorted into equal-width "bins" (bands).
+    function renderRuntime(films) {
+      const timed = films.filter(f => f.runtime !== null);
+      const BIN = 15; // minutes per band: try 10 or 30 and see how the shape changes
+
+      // Band edges from just below the shortest film to just above the longest.
+      const start = Math.floor(Math.min(...timed.map(f => f.runtime)) / BIN) * BIN;
+      const end = Math.max(...timed.map(f => f.runtime));
+      const bins = [];
+      for (let lo = start; lo <= end; lo += BIN) {
+        bins.push({ lo, hi: lo + BIN - 1, films: timed.filter(f => f.runtime >= lo && f.runtime < lo + BIN) });
+      }
+
+      // "1h 45" reads more naturally than "105 mins" for runtimes.
+      const hm = mins => `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, "0")}`;
+
+      const avg = Math.round(timed.reduce((s, f) => s + f.runtime, 0) / timed.length);
+      const longest = timed.reduce((a, b) => (b.runtime > a.runtime ? b : a));
+      setText("runtime-note", `Films grouped into 15-minute bands. Average ${hm(avg)}; ` +
+        `longest ${longest.title} at ${hm(longest.runtime)}.`);
+
+      makeChart("chart-runtime", {
+        type: "bar",
+        data: {
+          labels: bins.map(b => hm(b.lo)),
+          datasets: [{
+            label: "Films",
+            data: bins.map(b => b.films.length),
+            backgroundColor: COLOURS.ink,
+            borderRadius: 4,
+            categoryPercentage: 0.95, // histogram bars nearly touch: the bands are continuous
+            barPercentage: 1
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: items => { const b = bins[items[0].dataIndex]; return `${b.lo}–${b.hi} minutes`; },
+                label: item => `${item.raw} film${item.raw === 1 ? "" : "s"}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, title: { display: true, text: "Runtime (start of band)" } },
+            y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "Films" } }
+          }
+        }
+      });
+    }
+
+    // My rating vs TMDB: a scatter plot, one dot per film.
+    function renderTMDB(films) {
+      // Only films that have both scores.
+      const both = films.filter(f => f.rating !== null && f.tmdb !== null);
+      const points = both.map(f => ({ x: f.tmdb, y: f.rating, title: f.title }));
+
+      const above = both.filter(f => f.rating > f.tmdb).length;
+      const avgDiff = both.reduce((s, f) => s + (f.rating - f.tmdb), 0) / both.length;
+      setText("tmdb-note", `Each dot is a film. Above the dashed line (the shaded side), I liked it more than TMDB users did; below it, they liked it more. ` +
+        `I rated ${above} of ${both.length} films higher; on average I'm ` +
+        `${Math.abs(avgDiff).toFixed(1)} points ${avgDiff >= 0 ? "kinder" : "harsher"}.`);
+
+      // A small home-made plugin that draws on the chart. Before the dots: it shades
+      // the "I rated it higher" side of the line. After the dots: it names the four
+      // corners, on top so dots can't hide them. Try rewording the labels.
+      const areaLabels = {
+        id: "areaLabels",
+        beforeDatasetsDraw(chart) {
+          const { ctx, chartArea: area, scales: { x, y } } = chart;
+          ctx.save();
+
+          // Faint tint above the dashed line: the triangle (0,0) → (0,10) → (10,10).
+          ctx.fillStyle = "rgba(179, 38, 30, 0.04)";
+          ctx.beginPath();
+          ctx.moveTo(x.getPixelForValue(0), y.getPixelForValue(0));
+          ctx.lineTo(x.getPixelForValue(0), y.getPixelForValue(10));
+          ctx.lineTo(x.getPixelForValue(10), y.getPixelForValue(10));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        },
+        afterDatasetsDraw(chart) {
+          const { ctx, chartArea: area } = chart;
+          ctx.save();
+
+          // One label per corner: [text, which side, top or bottom].
+          const PAD = 10;
+          ctx.font = "italic 13px Fraunces, Georgia, serif";
+          ctx.fillStyle = "#8a8378";
+          // A thick outline in the page colour, drawn under each label, keeps it
+          // readable where it crosses a dot (a "halo").
+          ctx.strokeStyle = "#f5f0e6";
+          ctx.lineWidth = 4;
+          ctx.lineJoin = "round";
+          [
+            ["I liked it, TMDB didn't", "left", "top"],
+            ["We both loved it", "right", "top"],
+            ["We both disliked it", "left", "bottom"],
+            ["TMDB liked it, I didn't", "right", "bottom"]
+          ].forEach(([text, side, edge]) => {
+            ctx.textAlign = side;
+            ctx.textBaseline = edge;
+            const tx = side === "left" ? area.left + PAD : area.right - PAD;
+            const ty = edge === "top" ? area.top + PAD : area.bottom - PAD;
+            ctx.strokeText(text, tx, ty);
+            ctx.fillText(text, tx, ty);
+          });
+          ctx.restore();
+        }
+      };
+
+      makeChart("chart-tmdb", {
+        type: "scatter",
+        plugins: [areaLabels],
+        data: {
+          datasets: [
+            {
+              label: "Films",
+              data: points,
+              backgroundColor: "rgba(74, 69, 64, 0.55)", // see-through, so overlapping dots show up darker
+              borderColor: "#ffffff",                    // a thin white ring separates overlapping dots
+              borderWidth: 1,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              clip: false // let dots at exactly 10 draw past the edge instead of being cut in half
+            },
+            {
+              // The "we agree" line: wherever my score equals TMDB's.
+              label: "Same score",
+              data: [{ x: 0, y: 0 }, { x: 10, y: 10 }],
+              type: "line",
+              borderColor: "#9a948c",
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 0
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              filter: item => item.datasetIndex === 0, // no tooltip on the dashed line
+              callbacks: {
+                title: items => items[0].raw.title,
+                label: item => {
+                  const d = item.raw.y - item.raw.x;
+                  return `Me ${item.raw.y} · TMDB ${item.raw.x.toFixed(1)} (${d >= 0 ? "+" : ""}${d.toFixed(1)})`;
+                }
+              }
+            }
+          },
+          // Same 0–10 range on both axes, so the dashed line is a true 45° diagonal.
+          scales: {
+            x: { min: 0, max: 10, title: { display: true, text: "TMDB rating" } },
+            y: { min: 0, max: 10, title: { display: true, text: "My rating" } }
+          }
+        }
+      });
+    }
+
+    // Genre vs rating: one row per genre, a dot per film, plus the genre's average.
+    function renderGenres(films) {
+      const rated = films.filter(f => f.rating !== null);
+
+      // Collect ratings per genre. A "Music, Drama" film goes into both lists.
+      const byGenre = {};
+      rated.forEach(f => f.genres.forEach(g => (byGenre[g] ??= []).push(f)));
+
+      // Sort genres by average rating, best first.
+      const avg = list => list.reduce((s, f) => s + f.rating, 0) / list.length;
+      const genres = Object.keys(byGenre)
+        .map(name => ({ name, films: byGenre[name], avg: avg(byGenre[name]) }))
+        .sort((a, b) => b.avg - a.avg);
+
+      // Each genre is a row at y = 0, 1, 2… Films with the same score would sit
+      // exactly on top of each other, so within each row we fan same-score films
+      // out evenly, a little above and below the line.
+      const dots = genres.flatMap((g, i) => {
+        const sameScore = {}; // e.g. { "6.5": [film, film, …], "8": [film] }
+        g.films.forEach(f => (sameScore[f.rating] ??= []).push(f));
+        return Object.values(sameScore).flatMap(group => {
+          const step = Math.min(0.15, 0.7 / group.length); // tighter spacing for bigger groups
+          return group.map((f, k) => ({
+            x: f.rating,
+            y: i + (k - (group.length - 1) / 2) * step, // centred on the row
+            title: f.title,
+            genre: g.name
+          }));
+        });
+      });
+      const averages = genres.map((g, i) => ({ x: g.avg, y: i, genre: g.name, n: g.films.length }));
+
+      // For the headline, ignore genres with only a handful of films: two films aren't a pattern.
+      const MIN_FILMS = 5;
+      const solid = genres.filter(g => g.films.length >= MIN_FILMS);
+      const best = solid[0], worst = solid[solid.length - 1];
+      setText("genre-note", `Each dot is a film I rated; films with several genres appear once in each. ` +
+        `Of genres with ${MIN_FILMS}+ films, I rate ${best.name} highest (${best.avg.toFixed(1)}) ` +
+        `and ${worst.name} lowest (${worst.avg.toFixed(1)}).`);
+
+      // Give every genre row the same height, however many genres there are.
+      document.getElementById("genre-box").style.height = `${genres.length * 30 + 90}px`;
+
+      makeChart("chart-genre", {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "Genre average",
+              data: averages,
+              pointStyle: "line",  // a short line…
+              rotation: 90,        // …turned upright, like a tick mark
+              radius: 11,
+              borderWidth: 3,
+              borderColor: "#1d1b19",
+              hoverRadius: 12
+            },
+            {
+              label: "A film",
+              data: dots,
+              backgroundColor: "rgba(74, 69, 64, 0.35)",
+              borderColor: "#ffffff",
+              borderWidth: 1,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              clip: false
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            legend: { position: "top", align: "end", labels: { usePointStyle: true, boxWidth: 8 } },
+            tooltip: {
+              // The hover can catch several overlapping dots at once. They share a genre
+              // and score, so those go in the heading and each line names one film.
+              callbacks: {
+                title: items => {
+                  const p = items[0].raw;
+                  return p.title ? `${p.genre} · rated ${p.x}` : p.genre;
+                },
+                label: item => item.raw.title
+                  ? item.raw.title
+                  : `Average ${item.raw.x.toFixed(1)} across ${item.raw.n} film${item.raw.n === 1 ? "" : "s"}`
+              }
+            }
+          },
+          scales: {
+            x: { min: 0, max: 10, title: { display: true, text: "My rating" } },
+            y: {
+              reverse: true, // row 0 (the best genre) at the top
+              min: -0.5,
+              max: genres.length - 0.5,
+              grid: { display: false },
+              afterBuildTicks: axis => { axis.ticks = genres.map((_, i) => ({ value: i })); },
+              ticks: { autoSkip: false, callback: i => `${genres[i].name} (${genres[i].films.length})` }
+            }
+          }
+        }
+      });
+    }
+
+    // ---------- 5. Lists ----------
+
+    // Make an HTML element with an optional class and text. Using textContent
+    // (not innerHTML) means a film title can never be mistaken for HTML code.
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    const average = nums => nums.reduce((s, n) => s + n, 0) / nums.length;
+
+    // Count how often each name appears. getNames(film) returns the names for
+    // one film, e.g. its director, or its three lead actors.
+    function tally(films, getNames) {
+      const people = {};
+      films.forEach(f => getNames(f).forEach(name => (people[name] ??= []).push(f)));
+      return Object.entries(people).map(([name, list]) => {
+        const ratings = list.map(f => f.rating).filter(r => r !== null);
+        return { name, films: list, avg: ratings.length ? average(ratings) : null };
+      });
+    }
+
+    // Draw a top-5 list of people seen at least twice.
+    function renderRanked(listId, entries, kind) {
+      const MIN_FILMS = 2, TOP = 5;
+      const ol = document.getElementById(listId);
+      ol.replaceChildren(); // empty the list before redrawing it
+
+      // Most films first; ties broken by average rating, then alphabetically.
+      const ranked = entries
+        .filter(e => e.films.length >= MIN_FILMS)
+        .sort((a, b) => b.films.length - a.films.length || (b.avg ?? 0) - (a.avg ?? 0) || a.name.localeCompare(b.name));
+
+      if (!ranked.length) {
+        ol.append(el("li", "empty", "No one twice yet."));
+        return;
+      }
+
+      ranked.slice(0, TOP).forEach(e => {
+        // Rank by film count only, so people with the same count share a place: "=2".
+        const place = 1 + ranked.filter(o => o.films.length > e.films.length).length;
+        const shared = ranked.filter(o => o.films.length === e.films.length).length > 1;
+
+        const li = el("li");
+        li.append(el("span", "rank", (shared ? "=" : "") + place));
+        const text = el("div");
+        text.append(
+          nameButton(kind, e.name),
+          el("div", "meta", `${e.films.length} films` + (e.avg !== null ? ` · I average ${e.avg.toFixed(1)}` : "")),
+          el("div", "films", e.films.map(f => f.title).join(", "))
+        );
+        li.append(text);
+        ol.append(li);
+      });
+
+      // Be honest about who didn't fit in the top 5.
+      const rest = ranked.length - TOP;
+      if (rest > 0) ol.append(el("li", "more", `+ ${rest} more seen ${MIN_FILMS}+ times`));
+    }
+
+    // The three kinds of people, in one place: what to call them, which list
+    // they go in, and how to find their names in a film's row.
+    // Director, Cast and Studio can hold several names ("A, B"), so split them.
+    const splitNames = value => (value || "").split(",").map(n => n.trim()).filter(Boolean);
+
+    // Actors: the "Cast" column (top 5 billed) when it's filled in; otherwise
+    // fall back to the three Lead Actor columns, so older data still works.
+    const castOf = f => {
+      const cast = splitNames(f["Cast"]);
+      return cast.length ? cast : ["Lead Actor 1", "Lead Actor 2", "Lead Actor 3"].map(c => (f[c] || "").trim()).filter(Boolean);
+    };
+
+    // Studios: TMDB also lists companies that only put up money. Names here are
+    // left out of the Studios list. Add any that annoy you (spelt exactly as in the Sheet).
+    const IGNORE_STUDIOS = ["TSG Entertainment", "Domain Entertainment", "Media Capital Technologies"];
+    // Different spellings of the same studio, counted together: "as in the Sheet": "count as".
+    const SAME_STUDIO = {
+      "Working Title": "Working Title Films",
+      "20th Century Fox": "20th Century Studios" // its old name, before 2020
+    };
+    const studiosOf = f => [...new Set(splitNames(f["Studio"])
+      .map(name => SAME_STUDIO[name] || name)
+      .filter(name => !IGNORE_STUDIOS.includes(name)))]; // the Set stops a film counting twice
+
+    const PEOPLE = {
+      director: { label: "Director", listId: "list-directors", names: f => splitNames(f["Director"]) },
+      actor: { label: "Actor", listId: "list-actors", names: castOf },
+      studio: { label: "Studio", listId: "list-studios", names: studiosOf } // every studio counts, apart from the ignored ones
+    };
+
+    // State for the detail panel: which name is open (if any), and the films
+    // currently on show (they change with the year filter).
+    let openPerson = null;   // e.g. { kind: "studio", name: "A24" }
+    let peopleFilms = [];
+
+    function renderPeople(films) {
+      peopleFilms = films;
+      Object.entries(PEOPLE).forEach(([kind, p]) => renderRanked(p.listId, tally(films, p.names), kind));
+      refreshPersonPanel(); // keep an open panel in step with the year filter
+    }
+
+    // A name in the lists is a <button>, so it works with the keyboard too.
+    // aria-expanded tells screen readers (and our CSS) whether its panel is open.
+    function nameButton(kind, name) {
+      const button = el("button", "name-link", name);
+      button.type = "button";
+      button.dataset.kind = kind;
+      button.dataset.name = name;
+      button.setAttribute("aria-expanded", "false");
+      button.addEventListener("click", () => {
+        const same = openPerson && openPerson.kind === kind && openPerson.name === name;
+        openPerson = same ? null : { kind, name }; // clicking the open name again closes it
+        refreshPersonPanel();
+        if (openPerson) document.getElementById("person-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+      return button;
+    }
+
+    function refreshPersonPanel() {
+      const panel = document.getElementById("person-panel");
+      // Their films among those on show. If the year filter leaves them with none, close the panel.
+      const theirs = openPerson ? peopleFilms.filter(f => PEOPLE[openPerson.kind].names(f).includes(openPerson.name)) : [];
+      if (!theirs.length) openPerson = null;
+
+      document.querySelectorAll(".name-link").forEach(b => b.setAttribute("aria-expanded",
+        String(!!openPerson && b.dataset.kind === openPerson.kind && b.dataset.name === openPerson.name)));
+
+      panel.hidden = !openPerson;
+      if (openPerson) showPerson(openPerson.kind, openPerson.name, theirs);
+    }
+
+    function showPerson(kind, name, theirs) {
+      const panel = document.getElementById("person-panel");
+      panel.replaceChildren();
+      const shortDate = d => d ? d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "–";
+      const yearNote = selectedYear === "all" ? "" : ` in ${selectedYear}`;
+
+      // --- Left: name and the headline numbers ---
+      const head = el("div");
+      const close = el("button", "close", "×");
+      close.type = "button";
+      close.setAttribute("aria-label", "Close");
+      close.addEventListener("click", () => { openPerson = null; refreshPersonPanel(); });
+      head.append(close, el("div", "kpi-label", PEOPLE[kind].label), el("h3", "film-title", name));
+
+      const rated = theirs.filter(f => f.rating !== null);
+      const theirAvg = rated.length ? average(rated.map(f => f.rating)) : null;
+      const allRated = peopleFilms.filter(f => f.rating !== null);
+      const myAvg = allRated.length ? average(allRated.map(f => f.rating)) : null;
+      const both = theirs.filter(f => f.rating !== null && f.tmdb !== null);
+      const tmdbGap = both.length ? average(both.map(f => f.rating - f.tmdb)) : null;
+
+      // Re-use the big score blocks from the film finder's styles.
+      const scores = el("div", "scores");
+      const block = (label, value) => {
+        const b = el("div");
+        b.append(el("div", "kpi-label", label), el("div", "score-value", value));
+        return b;
+      };
+      scores.append(
+        block("Films seen", String(theirs.length)),
+        block("I average", theirAvg !== null ? theirAvg.toFixed(1) : "–")
+      );
+      head.append(scores);
+
+      // A few sentences of context, each only if there's data for it.
+      const facts = [];
+      if (theirAvg !== null && myAvg !== null) {
+        const d = theirAvg - myAvg;
+        facts.push(Math.abs(d) < 0.05 ? `Exactly my usual average${yearNote}.`
+          : `${Math.abs(d).toFixed(1)} ${d > 0 ? "above" : "below"} my usual ${myAvg.toFixed(1)}${yearNote}.`);
+      }
+      if (tmdbGap !== null) {
+        facts.push(Math.abs(tmdbGap) < 0.05 ? "TMDB and I agree on average."
+          : `I'm ${Math.abs(tmdbGap).toFixed(1)} ${tmdbGap > 0 ? "kinder" : "harsher"} than TMDB.`);
+      }
+      if (rated.length > 1) {
+        const best = [...rated].sort((a, b) => b.rating - a.rating)[0];
+        const worst = [...rated].sort((a, b) => a.rating - b.rating)[0];
+        if (best.rating !== worst.rating) facts.push(`Favourite: ${best.title} (${best.rating}). Least: ${worst.title} (${worst.rating}).`);
+      }
+      const genres = tally(theirs, f => f.genres).sort((a, b) => b.films.length - a.films.length).slice(0, 3);
+      if (genres.length) facts.push(`Mostly ${genres.map(g => `${g.name} (${g.films.length})`).join(", ")}.`);
+      const dated = theirs.filter(f => f.date).sort((a, b) => a.date - b.date);
+      if (dated.length > 1) {
+        facts.push(`First seen ${shortDate(dated[0].date)}, latest ${shortDate(dated.at(-1).date)}.`);
+      }
+      const ul = el("ul", "person-facts");
+      facts.forEach(t => ul.append(el("li", null, t)));
+      head.append(ul);
+
+      // --- Right: every film, best first; a title opens it in the film finder ---
+      const table = el("table", "person-films");
+      const headRow = el("tr");
+      [["Seen", ""], ["Film", ""], ["Me", "num"], ["TMDB", "num"]].forEach(([t, c]) => headRow.append(el("th", c, t)));
+      table.append(headRow);
+      const sorted = [...theirs].sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1) || (b.date ?? 0) - (a.date ?? 0));
+      sorted.forEach(f => {
+        const tr = el("tr");
+        const titleCell = el("td");
+        const link = el("button", "name-link", f.title);
+        link.type = "button";
+        link.addEventListener("click", () => openInFinder(f));
+        titleCell.append(link);
+        tr.append(
+          el("td", "when", shortDate(f.date)),
+          titleCell,
+          el("td", "num", f.rating ?? "–"),
+          el("td", "num", f.tmdb !== null ? f.tmdb.toFixed(1) : "–")
+        );
+        table.append(tr);
+      });
+
+      panel.append(head, table);
+    }
+
+    // Show a film in the film finder, and scroll down to it.
+    function openInFinder(f) {
+      const search = document.getElementById("film-search");
+      search.value = filmLabel(f);
+      showFilm(f);
+      search.closest("section").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // The five films furthest above and below the TMDB score.
+    function renderDisagreements(films) {
+      const both = films.filter(f => f.rating !== null && f.tmdb !== null)
+        .map(f => ({ ...f, diff: f.rating - f.tmdb }));
+
+      const draw = (listId, sorted) => {
+        const ol = document.getElementById(listId);
+        ol.replaceChildren();
+        sorted.slice(0, 5).forEach((f, i) => {
+          const li = el("li");
+          li.append(el("span", "rank", i + 1));
+          const text = el("div");
+          text.append(el("div", "name", f.title), el("div", "meta", `Me ${f.rating} · TMDB ${f.tmdb.toFixed(1)}`));
+          li.append(text, el("span", "big", (f.diff > 0 ? "+" : "−") + Math.abs(f.diff).toFixed(1)));
+          ol.append(li);
+        });
+        if (!sorted.length) ol.append(el("li", "empty", "No rated films yet."));
+      };
+
+      draw("list-kinder", [...both].sort((a, b) => b.diff - a.diff).filter(f => f.diff > 0));
+      draw("list-harsher", [...both].sort((a, b) => a.diff - b.diff).filter(f => f.diff < 0));
+    }
+
+    // ---------- 6. Film finder ----------
+
+    // "1st", "2nd", "3rd", "4th"… (11th, 12th and 13th are the awkward ones).
+    function ordinal(n) {
+      const end = n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+      return n + end;
+    }
+
+    // The text shown in the dropdown for each film. Adding the date means two
+    // screenings of the same film can't be confused.
+    const filmLabel = f => f.date
+      ? `${f.title} (${f.date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})`
+      : f.title;
+
+    function buildFilmFinder() {
+      // Most recent first, so new films are at the top of the list.
+      const films = [...allFilms].sort((a, b) => (b.date ?? 0) - (a.date ?? 0));
+
+      // Look-up table from dropdown text to film, for when someone picks one.
+      const byLabel = new Map(films.map(f => [filmLabel(f), f]));
+
+      const list = document.getElementById("film-options");
+      films.forEach(f => {
+        const option = el("option");
+        option.value = filmLabel(f);
+        list.append(option);
+      });
+
+      // "input" fires on every keystroke and when an option is picked. Only show
+      // a film once the text exactly matches one of the options.
+      const search = document.getElementById("film-search");
+      search.addEventListener("input", () => {
+        const film = byLabel.get(search.value);
+        if (film) showFilm(film);
+      });
+
+      // Start by showing the most recent film, so the section is never empty.
+      if (films.length) {
+        search.value = filmLabel(films[0]);
+        showFilm(films[0]);
+      }
+    }
+
+    function showFilm(f) {
+      const card = document.getElementById("film-card");
+      card.replaceChildren();
+
+      // --- Left: title, when I saw it, and the scores ---
+      const head = el("div");
+      head.append(el("h3", "film-title", f.title));
+
+      // Where it sits in its year: "My 34th film of 2026".
+      let when = f.date
+        ? `Seen ${f.date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`
+        : "Date not recorded";
+      if (f.date) {
+        const sameYear = allFilms.filter(o => o.date && o.date.getFullYear() === f.date.getFullYear())
+          .sort((a, b) => a.date - b.date || Number(a["Movie ID"]) - Number(b["Movie ID"]));
+        when += ` · my ${ordinal(sameYear.indexOf(f) + 1)} film of ${f.date.getFullYear()}`;
+      }
+      head.append(el("p", "film-when", when));
+
+      const scores = el("div", "scores");
+      const scoreBlock = (label, value, outOf) => {
+        const block = el("div");
+        block.append(el("div", "kpi-label", label));
+        const big = el("div", "score-value", value ?? "–");
+        if (value !== null && outOf) big.append(el("small", null, outOf));
+        block.append(big);
+        return block;
+      };
+      scores.append(
+        scoreBlock("My rating", f.rating, " / 10"),
+        scoreBlock("TMDB", f.tmdb !== null ? f.tmdb.toFixed(1) : null, " / 10")
+      );
+      head.append(scores);
+
+      // A line of context: how it ranks, and how far I was from TMDB.
+      const notes = [];
+      if (f.rating !== null) {
+        const rated = allFilms.filter(o => o.rating !== null);
+        const higher = rated.filter(o => o.rating > f.rating).length;
+        const tied = rated.filter(o => o.rating === f.rating).length > 1;
+        notes.push(`${tied ? "Joint " : ""}${ordinal(higher + 1)} of ${rated.length} films I've rated`);
+      } else {
+        notes.push("Not rated");
+      }
+      if (f.rating !== null && f.tmdb !== null) {
+        const diff = f.rating - f.tmdb;
+        notes.push(Math.abs(diff) < 0.05 ? "Same as TMDB"
+          : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? "above" : "below"} TMDB`);
+      }
+      head.append(el("p", "score-note", notes.join(" · ")));
+
+      // --- Right: the facts, as label/value pairs ---
+      const hm = mins => `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, "0")}`;
+      const facts = [
+        ["Released", f["Release Year"]],
+        ["Runtime", f.runtime !== null ? `${hm(f.runtime)} (${f.runtime} mins)` : ""],
+        ["Genres", f.genres.join(", ")],
+        ["Director", f["Director"]],
+        ["Writers", f["Writer"]],
+        ["Starring", castOf(f).join(", ")],
+        ["Producers", f["Producer"]],
+        ["Studios", f["Studio"]]
+      ];
+      const dl = el("dl", "film-facts");
+      facts.forEach(([label, value]) => dl.append(el("dt", null, label), el("dd", null, value || "–")));
+
+      card.append(head, dl);
+    }
+
+    init();
+  </script>
+</body>
+</html>

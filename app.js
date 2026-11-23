@@ -144,11 +144,13 @@ const tabs = document.querySelectorAll(".tab");
 tabs.forEach(tab => tab.addEventListener("click", () => showView(tab.dataset.view)));
 
 function showView(viewId) {
-  document.getElementById("log-view").hidden = viewId !== "log-view";
-  document.getElementById("seen-view").hidden = viewId !== "seen-view";
+  document.querySelectorAll("main").forEach(view => view.hidden = view.id !== viewId);
   tabs.forEach(tab => tab.setAttribute("aria-pressed", String(tab.dataset.view === viewId)));
   window.scrollTo(0, 0);
   if (viewId === "seen-view") refreshFilms();
+  // Load the dashboard the first time Stats is opened (not on every app start, as it's bigger).
+  const frame = document.getElementById("stats-frame");
+  if (viewId === "stats-view" && !frame.src) frame.src = "dashboard.html?v=5";
 }
 
 // ---------- Seen list ----------

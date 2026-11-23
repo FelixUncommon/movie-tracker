@@ -19,7 +19,8 @@ function doGet() {
 }
 
 // Every request from the phone app arrives here. It always includes the key,
-// plus an "action": "list" asks for the films seen so far; anything else adds a film.
+// plus an "action": "list" asks for the films seen so far, "csv" asks for the
+// whole Raw tab (for the dashboard); anything else adds a film.
 function doPost(e) {
   let data;
   try {
@@ -35,7 +36,24 @@ function doPost(e) {
   }
 
   if (data.action === "list") return listFilms_();
+  if (data.action === "csv") return csvOfRawTab_();
   return addFilm_(data);
+}
+
+// Sends back the whole Raw tab as CSV text, exactly as the Sheet shows it
+// (same as File → Download → CSV), so the dashboard's own CSV reader works unchanged.
+function csvOfRawTab_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TRACKER_TAB);
+    if (!sheet) throw new Error('Worksheet "' + TRACKER_TAB + '" not found.');
+    const rows = sheet.getDataRange().getDisplayValues();
+    // Cells containing a comma, quote or line break are wrapped in quotes ("" = a literal quote).
+    const quote = cell => /[",\n\r]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
+    const csv = rows.map(row => row.map(quote).join(",")).join("\n");
+    return reply_({ ok: true, csv: csv });
+  } catch (err) {
+    return reply_({ ok: false, error: String(err.message || err) });
+  }
 }
 
 // Sends back every film as { t: title, r: rating, d: "DD/MM/YYYY" }, in Sheet order.

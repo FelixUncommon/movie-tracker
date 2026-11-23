@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#121014">
 
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <!-- Two screens ("views"): only one is shown at a time, switched by the tab bar below. -->
@@ -69,14 +69,21 @@
     <ol id="film-list" class="film-list"></ol>
   </main>
 
+  <!-- The full cinema dashboard (dashboard.html), shown inside the app.
+       It's only loaded the first time you open this tab. -->
+  <main id="stats-view" class="stats-view" hidden>
+    <iframe id="stats-frame" title="Cinema dashboard"></iframe>
+  </main>
+
   <nav class="tabs">
     <button type="button" class="tab" data-view="log-view" aria-pressed="true">Log</button>
     <button type="button" class="tab" data-view="seen-view" aria-pressed="false">Seen</button>
+    <button type="button" class="tab" data-view="stats-view" aria-pressed="false">Stats</button>
   </nav>
 
-  <!-- "?v=4" makes phones fetch the new files instead of reusing old saved copies.
+  <!-- "?v=5" makes phones fetch the new files instead of reusing old saved copies.
        Bump the number whenever you change these files. -->
-  <script src="config.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="config.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
