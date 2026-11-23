@@ -14,7 +14,7 @@ const statusText = document.getElementById("status");
 // localStorage keeps small bits of text on this device between visits.
 const KEY_STORAGE = "movieTrackerKey";
 
-let wholePoints = null;   // 1–10, or null until you tap one
+let wholePoints = null;   // 1–10, or null for no rating
 let addHalf = false;
 
 // ---------- Date: default to today ----------
@@ -32,7 +32,8 @@ for (let n = 1; n <= 10; n++) {
   button.className = "chip";
   button.textContent = n;
   button.setAttribute("aria-pressed", "false");
-  button.addEventListener("click", () => { wholePoints = n; showRating(); });
+  // Tapping the selected number again clears it, so a film can be saved unrated.
+  button.addEventListener("click", () => { wholePoints = wholePoints === n ? null : n; showRating(); });
   ratingButtons.appendChild(button);
 }
 
@@ -47,10 +48,11 @@ function showRating() {
   [...ratingButtons.children].forEach((button, i) => {
     button.setAttribute("aria-pressed", String(i + 1 === wholePoints));
   });
-  halfButton.disabled = wholePoints === 10;   // there's no 10.5
-  halfButton.setAttribute("aria-pressed", String(addHalf && wholePoints !== 10));
+  halfButton.disabled = wholePoints === null || wholePoints === 10;   // nothing to halve, and no 10.5
+  halfButton.setAttribute("aria-pressed", String(addHalf && wholePoints !== null && wholePoints !== 10));
   const rating = currentRating();
-  ratingValue.textContent = rating === null ? "–" : rating;
+  ratingValue.textContent = rating === null ? "optional" : rating;
+  ratingValue.classList.toggle("unset", rating === null);   // greyed out when there's no rating
 }
 
 // ---------- The secret key ----------
@@ -86,7 +88,6 @@ form.addEventListener("submit", async event => {
   const key = localStorage.getItem(KEY_STORAGE) || keyInput.value.trim();
   const rating = currentRating();
   if (!titleInput.value.trim()) return setStatus("Add a title.", "error");
-  if (rating === null) return setStatus("Pick a rating.", "error");
   if (!key) return setStatus("Enter your secret key.", "error");
 
   const film = {
@@ -107,7 +108,7 @@ form.addEventListener("submit", async event => {
     localStorage.setItem(KEY_STORAGE, key);   // key worked, so remember it on this device
     showKeyFieldIfNeeded();
     const match = result.match ? ` · TMDB: ${result.match}` : "";
-    setStatus(`Saved ${film.title} (${film.rating})${match}`, "ok");
+    setStatus(`Saved ${film.title} (${film.rating ?? "unrated"})${match}`, "ok");
 
     // Add it to the saved list straight away, so it's on the Seen tab even before a refresh.
     const [y, m, d] = film.date.split("-");
@@ -156,6 +157,17 @@ const FILMS_STORAGE = "movieTrackerFilms";
 const filmList = document.getElementById("film-list");
 const filmCount = document.getElementById("film-count");
 const listStatus = document.getElementById("list-status");
+const searchInput = document.getElementById("search");
+
+// Re-draw the list on every keystroke in the search box.
+searchInput.addEventListener("input", () => renderFilms(loadFilms()));
+// Pressing Search/Enter just closes the keyboard, so you can see the results.
+searchInput.addEventListener("keydown", event => { if (event.key === "Enter") searchInput.blur(); });
+
+// Lower case with accents removed, so "amelie" finds "Amélie".
+function simplify(text) {
+  return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
 
 function loadFilms() {
   try { return JSON.parse(localStorage.getItem(FILMS_STORAGE)) || []; }
@@ -178,8 +190,16 @@ function renderFilms(films) {
   // films on the same day keep the most recently logged one at the top.
   const newestFirst = [...films].reverse().sort((a, b) => dateNumber(b.d) - dateNumber(a.d));
 
-  filmCount.textContent = films.length ? films.length : "";
-  filmList.replaceChildren(...newestFirst.map(film => {
+  // Keep only films whose title contains what's typed in the search box.
+  const query = simplify(searchInput.value);
+  const shown = query ? newestFirst.filter(film => simplify(film.t).includes(query)) : newestFirst;
+
+  filmCount.textContent = !films.length ? "" : query ? `${shown.length} of ${films.length}` : films.length;
+  if (query && !shown.length) {
+    const none = Object.assign(document.createElement("li"), { className: "no-match", textContent: "No films match." });
+    return filmList.replaceChildren(none);
+  }
+  filmList.replaceChildren(...shown.map(film => {
     const item = document.createElement("li");
     // textContent (not innerHTML) so a title can never be treated as code.
     const title = Object.assign(document.createElement("span"), { className: "film-title", textContent: film.t });

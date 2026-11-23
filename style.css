@@ -156,3 +156,20 @@ input[type="text"], input[type="date"], input[type="password"] {
   font-weight: 700;
   font-size: 20px;
 }
+
+/* ---------- Rating "optional" hint and Seen search ---------- */
+#rating-value.unset { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+.search {
+  width: 100%;
+  font-size: 17px;            /* 16px+ stops iPhone zooming in on tap */
+  color: var(--text);
+  background: var(--card);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  outline: none;
+  color-scheme: dark;
+}
+.no-match { color: var(--muted); display: block !important; }

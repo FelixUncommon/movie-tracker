@@ -70,15 +70,16 @@ function listFilms_() {
   }
 }
 
-// data is: { key, title, date: "YYYY-MM-DD", rating, rewatch }
+// data is: { key, title, date: "YYYY-MM-DD", rating (or null if unrated), rewatch }
 function addFilm_(data) {
   // 1. Check the film details make sense.
   const title = String(data.title || "").trim();
-  const rating = Number(data.rating);
+  const unrated = data.rating === null || data.rating === undefined || data.rating === "";
+  const rating = unrated ? "" : Number(data.rating);   // "" leaves the Rating cell blank
   const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(data.date || ""));
   if (!title) return reply_({ ok: false, error: "Title is missing." });
   if (!dateParts) return reply_({ ok: false, error: "Date is missing." });
-  if (!(rating >= 0 && rating <= 10) || (rating * 2) % 1 !== 0) {
+  if (!unrated && (!(rating >= 0 && rating <= 10) || (rating * 2) % 1 !== 0)) {
     return reply_({ ok: false, error: "Rating must be 0–10 in half points." });
   }
   const [, year, month, day] = dateParts;
