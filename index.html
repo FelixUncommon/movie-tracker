@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <!-- Makes the page fit a phone screen instead of a zoomed-out desktop view. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Log a film</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Log a film</h1>
+
+    <form id="film-form" autocomplete="off">
+      <label class="field">
+        <span>Title</span>
+        <input id="title" type="text" required autocapitalize="words" placeholder="e.g. Wildwood">
+      </label>
+
+      <label class="field">
+        <span>Date watched</span>
+        <input id="date" type="date" required>
+      </label>
+
+      <fieldset class="field">
+        <legend>My rating <output id="rating-value">–</output></legend>
+        <!-- 1 to 10 buttons are added by app.js; ½ adds half a point. -->
+        <div id="rating-buttons" class="rating-grid"></div>
+        <button type="button" id="half" class="chip half" aria-pressed="false">+ ½</button>
+      </fieldset>
+
+      <label class="field toggle">
+        <span>Rewatch</span>
+        <input id="rewatch" type="checkbox">
+      </label>
+
+      <!-- Only shown until the key is saved on this device. -->
+      <label class="field" id="key-field" hidden>
+        <span>Secret key (asked once per device)</span>
+        <input id="key" type="password" autocomplete="off">
+      </label>
+
+      <button type="submit" id="save" class="save">Save film</button>
+      <p id="status" role="status"></p>
+    </form>
+
+    <button type="button" id="forget-key" class="link">Change key</button>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

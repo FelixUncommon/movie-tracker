@@ -1,0 +1,114 @@
+/* Colours in one place: change these to restyle the whole app. */
+:root {
+  --bg: #121014;
+  --card: #1e1a21;
+  --text: #f3eee8;
+  --muted: #9a9198;
+  --accent: #e8b04a;      /* cinema-ticket gold */
+  --ok: #7fc99a;
+  --error: #ef7a6d;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+/* Make sure "hidden" always wins, even over rules like .field { display: block }. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Keeps content clear of the iPhone notch and home bar. */
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+
+main { max-width: 480px; margin: 0 auto; padding: 20px; }
+
+h1 { font-size: 28px; margin: 12px 0 20px; }
+
+.field {
+  display: block;
+  background: var(--card);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 12px;
+}
+
+.field > span, legend {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+legend { float: left; width: 100%; }   /* lets the legend sit inside the card */
+
+/* 16px or more stops iPhone Safari zooming in when you tap a field. */
+input[type="text"], input[type="date"], input[type="password"] {
+  width: 100%;
+  font-size: 18px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  outline: none;
+  color-scheme: dark;
+}
+
+#rating-value { color: var(--accent); font-weight: 700; font-size: 18px; margin-left: 6px; }
+
+.rating-grid {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chip {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: #2b2530;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 0;
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: #1a1408; }
+.chip:disabled { opacity: 0.35; }
+.half { width: 100%; }
+
+.toggle { display: flex; align-items: center; justify-content: space-between; }
+.toggle > span { margin: 0; color: var(--text); font-size: 17px; }
+.toggle input { width: 24px; height: 24px; accent-color: var(--accent); }
+
+.save {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  font-size: 19px;
+  background: var(--accent);
+  color: #1a1408;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 8px;
+}
+.save:disabled { opacity: 0.6; }
+
+#status { min-height: 1.4em; text-align: center; }
+#status.ok { color: var(--ok); }
+#status.error { color: var(--error); }
+
+.link {
+  display: block;
+  margin: 24px auto 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+}
