@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cinema Diary</title>
   <!-- Tab icon: a tiny SVG drawn in the line itself, showing the ticket emoji. Swap the emoji to change it. -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎟️</text></svg>">
@@ -578,6 +578,28 @@
       font-size: 10px;
       fill: var(--muted);
     }
+  
+    /* ---- Film log app: tab bar and status-bar strip (this copy only) ---- */
+    /* Room for the iPhone status bar at the top and the tab bar at the bottom. */
+    body {
+      padding-top: calc(40px + env(safe-area-inset-top));
+      padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    }
+    .status-strip {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: env(safe-area-inset-top);
+      background: #121014; z-index: 50;
+    }
+    .app-tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+      display: flex;
+      background: #1e1a21;
+      border-top: 1px solid #2b2530;
+      padding-bottom: env(safe-area-inset-bottom);
+      font: 600 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .app-tabs a { flex: 1; text-align: center; padding: 14px 0; color: #9a9198; text-decoration: none; }
+    .app-tabs a[aria-current="page"] { color: #e8b04a; }
   </style>
 </head>
 <body>
@@ -753,6 +775,15 @@
     Chart.js, loaded from a CDN (a public server that hosts libraries).
     The exact version number is pinned, so an update can't change the page unexpectedly.
   -->
+  <!-- Film log app: the same Log / Seen / Stats tab bar as the main app.
+       Log and Seen go back to the app's page (the #seen tells it which tab to show). -->
+  <div class="status-strip"></div>
+  <nav class="app-tabs">
+    <a href="./#log">Log</a>
+    <a href="./#seen">Seen</a>
+    <a aria-current="page">Stats</a>
+  </nav>
+
   <!-- The Apps Script address, shared with the Film log app. -->
   <script src="config.js?v=5"></script>
 

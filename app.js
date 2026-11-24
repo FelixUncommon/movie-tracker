@@ -171,7 +171,7 @@ async function callScript(payload) {
 }
 
 // ---------- Tabs: Log / Seen ----------
-const tabs = document.querySelectorAll(".tab");
+const tabs = document.querySelectorAll(".tab[data-view]");   // Log and Seen (Stats is a link)
 tabs.forEach(tab => tab.addEventListener("click", () => showView(tab.dataset.view)));
 
 function showView(viewId) {
@@ -179,9 +179,6 @@ function showView(viewId) {
   tabs.forEach(tab => tab.setAttribute("aria-pressed", String(tab.dataset.view === viewId)));
   window.scrollTo(0, 0);
   if (viewId === "seen-view") refreshFilms();
-  // Load the dashboard the first time Stats is opened (not on every app start, as it's bigger).
-  const frame = document.getElementById("stats-frame");
-  if (viewId === "stats-view" && !frame.src) frame.src = "dashboard.html?v=5";
 }
 
 // ---------- Seen list ----------
@@ -350,3 +347,5 @@ confirmDelete.addEventListener("click", async () => {
 resetForm();
 showKeyFieldIfNeeded();
 renderFilms(loadFilms());
+// Coming back from the Stats page with "#seen" in the address opens the Seen tab.
+if (location.hash === "#seen") showView("seen-view");
