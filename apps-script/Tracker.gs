@@ -20,7 +20,7 @@ function doGet() {
 
 // Every request from the phone app arrives here. It always includes the key,
 // plus an "action": "list" asks for the films seen so far, "csv" asks for the
-// whole Raw tab (for the dashboard); anything else adds a film.
+// whole Raw tab (for the dashboard), "delete" removes a recent film; anything else adds a film.
 function doPost(e) {
   let data;
   try {
@@ -37,6 +37,7 @@ function doPost(e) {
 
   if (data.action === "list") return listFilms_();
   if (data.action === "csv") return csvOfRawTab_();
+  if (data.action === "delete") return deleteFilm_(data);
   return addFilm_(data);
 }
 
@@ -56,7 +57,7 @@ function csvOfRawTab_() {
   }
 }
 
-// Sends back every film as { t: title, r: rating, d: "DD/MM/YYYY" }, in Sheet order.
+// Sends back every film as { id: Record ID, t: title, r: rating, d: "DD/MM/YYYY" }, in Sheet order.
 // Short names keep the reply small, which matters on a weak phone signal.
 function listFilms_() {
   try {
@@ -70,6 +71,7 @@ function listFilms_() {
       return index;
     };
     const titleAt = at("Movie Title"), ratingAt = at("Rating"), dateAt = at("Date Watched");
+    const idAt = at("Record ID");
     const timeZone = Session.getScriptTimeZone();
 
     const films = values.slice(1)
@@ -77,6 +79,7 @@ function listFilms_() {
       .map(row => {
         const date = row[dateAt];
         return {
+          id: row[idAt] === "" ? null : Number(row[idAt]),
           t: String(row[titleAt]).trim(),
           r: row[ratingAt] === "" ? null : Number(row[ratingAt]),
           d: date instanceof Date ? Utilities.formatDate(date, timeZone, "dd/MM/yyyy") : String(date)
@@ -106,7 +109,7 @@ function addFilm_(data) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   let sheet, newRow, col;
-  let movieId;
+  let movieId, savedRecordId;
   try {
     sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TRACKER_TAB);
     if (!sheet) throw new Error('Worksheet "' + TRACKER_TAB + '" not found.');
@@ -153,6 +156,7 @@ function addFilm_(data) {
     sheet.getRange(newRow, col("Year Watched")).setValue(Number(year));
     sheet.getRange(newRow, col("Rewatch?")).setValue(data.rewatch ? "Yes" : "No");
     sheet.getRange(newRow, col("Record ID")).setValue(recordId);
+    savedRecordId = recordId;
 
     // vs TMDB is a formula (e.g. =C2-Q2). Copying it down adjusts it to the new row.
     const vsCell = sheet.getRange(newRow, col("vs TMDB"));
@@ -175,7 +179,63 @@ function addFilm_(data) {
     match = "TMDB lookup failed: " + (err.message || err);
   }
 
-  return reply_({ ok: true, row: newRow, movieId: movieId, match: match });
+  return reply_({ ok: true, row: newRow, movieId: movieId, recordId: savedRecordId, match: match });
+}
+
+// Deletes one of the most recently added films. Several safety checks:
+//  - only the last RECENT_LIMIT films with a title can be deleted (older ones: use the Sheet);
+//  - the row is found by Record ID, and its title must match too (so a stale list can't
+//    delete the wrong film if rows have moved);
+//  - nothing is wiped: the row is copied to a "Deleted" tab, with the date, before removal.
+const RECENT_LIMIT = 5;
+const DELETED_TAB = "Deleted";
+
+function deleteFilm_(data) {
+  const id = Number(data.id);
+  const title = String(data.title || "").trim();
+  if (!id || !title) return reply_({ ok: false, error: "Which film? (missing ID or title)" });
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const book = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = book.getSheetByName(TRACKER_TAB);
+    if (!sheet) throw new Error('Worksheet "' + TRACKER_TAB + '" not found.');
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0].map(h => String(h).trim());
+    const titleAt = headers.indexOf("Movie Title"), idAt = headers.indexOf("Record ID");
+    if (titleAt === -1 || idAt === -1) throw new Error("Missing Movie Title or Record ID column.");
+
+    // Sheet row numbers of the films (rows with a title), oldest first.
+    const filmRows = [];
+    values.forEach((row, i) => { if (i > 0 && String(row[titleAt]).trim() !== "") filmRows.push(i + 1); });
+    const recentRows = filmRows.slice(-RECENT_LIMIT);
+
+    const rowNumber = filmRows.find(r => Number(values[r - 1][idAt]) === id);
+    if (!rowNumber) return reply_({ ok: false, error: "Couldn't find that film in the Sheet. Refresh the list and try again." });
+    if (String(values[rowNumber - 1][titleAt]).trim() !== title) {
+      return reply_({ ok: false, error: "The Sheet has changed since the list loaded. Refresh and try again." });
+    }
+    if (recentRows.indexOf(rowNumber) === -1) {
+      return reply_({ ok: false, error: "Only the " + RECENT_LIMIT + " most recent films can be deleted from the app." });
+    }
+
+    // Copy to the Deleted tab first (created with the same headers the first time).
+    let bin = book.getSheetByName(DELETED_TAB);
+    if (!bin) {
+      bin = book.insertSheet(DELETED_TAB);
+      bin.appendRow(headers.concat(["Deleted on"]));
+    }
+    bin.appendRow(values[rowNumber - 1].concat([new Date()]));
+
+    sheet.deleteRow(rowNumber);
+    SpreadsheetApp.flush();
+    return reply_({ ok: true, deleted: title });
+  } catch (err) {
+    return reply_({ ok: false, error: String(err.message || err) });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function reply_(obj) {

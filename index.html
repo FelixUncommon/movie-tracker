@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#121014">
 
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <!-- Two screens ("views"): only one is shown at a time, switched by the tab bar below. -->
@@ -92,9 +92,33 @@
     <button type="button" class="tab" data-view="stats-view" aria-pressed="false">Stats</button>
   </nav>
 
-  <!-- "?v=6" makes phones fetch the new files instead of reusing old saved copies.
+  <!-- Tapping a film in Seen opens this panel. Delete only shows for recent films. -->
+  <div id="film-panel" class="overlay" hidden>
+    <div class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <span id="panel-title" class="panel-title"></span>
+        <span id="panel-rating" class="panel-rating"></span>
+      </div>
+      <p id="panel-date" class="panel-date"></p>
+      <button type="button" id="panel-delete" class="btn danger">Delete film</button>
+      <button type="button" id="panel-close" class="btn">Close</button>
+    </div>
+  </div>
+
+  <!-- "Are you sure?" before anything is deleted. -->
+  <div id="confirm" class="overlay centred" hidden>
+    <div class="dialog">
+      <p id="confirm-question" class="dialog-question"></p>
+      <p class="dialog-note">It moves to the Deleted tab in your Sheet, so you can restore it there if needed.</p>
+      <button type="button" id="confirm-delete" class="btn danger">Delete</button>
+      <button type="button" id="confirm-cancel" class="btn gold">Cancel</button>
+    </div>
+  </div>
+
+  <!-- "?v=7" makes phones fetch the new files instead of reusing old saved copies.
        Bump the number whenever you change these files. -->
-  <script src="config.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

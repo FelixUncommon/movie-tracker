@@ -113,7 +113,7 @@ form.addEventListener("submit", async event => {
 
     // Add it to the saved list straight away, so it's on the Seen tab even before a refresh.
     const [y, m, d] = film.date.split("-");
-    saveFilms([...loadFilms(), { t: film.title, r: film.rating, d: `${d}/${m}/${y}` }]);
+    saveFilms([...loadFilms(), { id: result.recordId ?? null, t: film.title, r: film.rating, d: `${d}/${m}/${y}` }]);
     resetForm();
   } catch (err) {
     setStatus("Couldn't reach the Sheet. Check your signal and try again.", "error");
@@ -262,6 +262,7 @@ function renderFilms(films) {
     const rating = Object.assign(document.createElement("span"), { className: "film-rating", textContent: film.r ?? "–" });
     const date = Object.assign(document.createElement("span"), { className: "film-date", textContent: film.d });
     item.append(title, rating, date);
+    item.addEventListener("click", () => openPanel(film));
     items.push(item);
   }
   filmList.replaceChildren(...items);
@@ -287,6 +288,63 @@ async function refreshFilms() {
     setListStatus("Offline: showing the list from your last visit.", "error");
   }
 }
+
+// ---------- Film panel and deleting ----------
+// Only the most recently added films can be deleted (the script checks this too).
+const RECENT_LIMIT = 5;
+const panel = document.getElementById("film-panel");
+const confirmBox = document.getElementById("confirm");
+const confirmDelete = document.getElementById("confirm-delete");
+let panelFilm = null;     // the film shown in the panel
+let confirmFilm = null;   // the film the "Are you sure?" box is about (fixed when it opens)
+
+function openPanel(film) {
+  panelFilm = film;
+  document.getElementById("panel-title").textContent = film.t;
+  document.getElementById("panel-rating").textContent = film.r ?? "–";
+  document.getElementById("panel-date").textContent = `Watched ${film.d}`;
+  // The films are stored in Sheet order, so the last few are the most recently added.
+  const recentIds = loadFilms().slice(-RECENT_LIMIT).map(f => f.id);
+  const canDelete = film.id != null && recentIds.includes(film.id);
+  document.getElementById("panel-delete").hidden = !canDelete;
+  panel.hidden = false;
+}
+
+function closePanel() { panel.hidden = true; }
+
+document.getElementById("panel-close").addEventListener("click", closePanel);
+// Tapping the dark area outside the panel closes it too.
+panel.addEventListener("click", event => { if (event.target === panel) closePanel(); });
+
+document.getElementById("panel-delete").addEventListener("click", () => {
+  confirmFilm = panelFilm;
+  document.getElementById("confirm-question").textContent = `Delete ${confirmFilm.t} (${confirmFilm.d})?`;
+  confirmBox.hidden = false;
+});
+
+document.getElementById("confirm-cancel").addEventListener("click", () => { confirmBox.hidden = true; });
+
+confirmDelete.addEventListener("click", async () => {
+  const film = confirmFilm;
+  if (!film) return;
+  const key = localStorage.getItem(KEY_STORAGE);
+  confirmDelete.disabled = true;
+  confirmDelete.textContent = "Deleting…";
+  try {
+    const result = await callScript({ key, action: "delete", id: film.id, title: film.t });
+    confirmBox.hidden = true;
+    closePanel();
+    if (!result.ok) return setListStatus(result.error || "Couldn't delete it.", "error");
+    saveFilms(loadFilms().filter(f => f.id !== film.id));
+    setListStatus(`Deleted ${film.t}. It's in the Deleted tab in your Sheet.`, "ok");
+  } catch (err) {
+    confirmBox.hidden = true;
+    setListStatus("Couldn't reach the Sheet, so nothing was deleted. Try again.", "error");
+  } finally {
+    confirmDelete.disabled = false;
+    confirmDelete.textContent = "Delete";
+  }
+});
 
 // ---------- Start ----------
 resetForm();
