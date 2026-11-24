@@ -20,7 +20,8 @@ function doGet() {
 
 // Every request from the phone app arrives here. It always includes the key,
 // plus an "action": "list" asks for the films seen so far, "csv" asks for the
-// whole Raw tab (for the dashboard), "delete" removes a recent film; anything else adds a film.
+// whole Raw tab (for the dashboard), "delete" removes a recent film, "search" looks up
+// TMDB while you type; anything else adds a film.
 function doPost(e) {
   let data;
   try {
@@ -38,6 +39,7 @@ function doPost(e) {
   if (data.action === "list") return listFilms_();
   if (data.action === "csv") return csvOfRawTab_();
   if (data.action === "delete") return deleteFilm_(data);
+  if (data.action === "search") return searchTmdb_(data);
   return addFilm_(data);
 }
 
@@ -91,7 +93,8 @@ function listFilms_() {
   }
 }
 
-// data is: { key, title, date: "YYYY-MM-DD", rating (or null if unrated), rewatch }
+// data is: { key, title, date: "YYYY-MM-DD", rating (or null if unrated), rewatch,
+//            releaseYear (optional: from a TMDB suggestion, so the scraper picks that film) }
 function addFilm_(data) {
   // 1. Check the film details make sense.
   const title = String(data.title || "").trim();
@@ -155,6 +158,11 @@ function addFilm_(data) {
     sheet.getRange(newRow, col("Date Watched")).setValue(dateValue);
     sheet.getRange(newRow, col("Year Watched")).setValue(Number(year));
     sheet.getRange(newRow, col("Rewatch?")).setValue(data.rewatch ? "Yes" : "No");
+    // The scraper prefers the TMDB result whose year matches Release Year,
+    // so filling it in from the chosen suggestion makes it pick the right film.
+    if (/^\d{4}$/.test(String(data.releaseYear || ""))) {
+      sheet.getRange(newRow, col("Release Year")).setValue(Number(data.releaseYear));
+    }
     sheet.getRange(newRow, col("Record ID")).setValue(recordId);
     savedRecordId = recordId;
 
@@ -180,6 +188,31 @@ function addFilm_(data) {
   }
 
   return reply_({ ok: true, row: newRow, movieId: movieId, recordId: savedRecordId, match: match });
+}
+
+// Looks up a title on TMDB for the suggestions under the Title box.
+// Uses the same search and token (Script Properties → TMDB_TOKEN) as the scraper.
+// Sends back up to 5 films: { title, year, poster (small image address, or null) }.
+function searchTmdb_(data) {
+  const query = String(data.q || "").trim();
+  if (query.length < 2) return reply_({ ok: true, results: [] });
+  try {
+    const token = PropertiesService.getScriptProperties().getProperty("TMDB_TOKEN");
+    if (!token) throw new Error("TMDB_TOKEN is missing from Script Properties.");
+    const response = UrlFetchApp.fetch(
+      "https://api.themoviedb.org/3/search/movie?include_adult=false&query=" + encodeURIComponent(query),
+      { headers: { Authorization: "Bearer " + token, accept: "application/json" }, muteHttpExceptions: true }
+    );
+    if (response.getResponseCode() !== 200) throw new Error("TMDB HTTP " + response.getResponseCode());
+    const results = (JSON.parse(response.getContentText()).results || []).slice(0, 5).map(movie => ({
+      title: movie.title,
+      year: movie.release_date ? movie.release_date.substring(0, 4) : "",
+      poster: movie.poster_path ? "https://image.tmdb.org/t/p/w92" + movie.poster_path : null
+    }));
+    return reply_({ ok: true, results: results });
+  } catch (err) {
+    return reply_({ ok: false, error: String(err.message || err) });
+  }
 }
 
 // Deletes one of the most recently added films. Several safety checks:

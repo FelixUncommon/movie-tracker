@@ -75,6 +75,7 @@ function setStatus(message, kind = "") {
 
 function resetForm() {
   titleInput.value = "";
+  clearSuggestion();
   dateInput.value = todayIso();
   wholePoints = null;
   addHalf = false;
@@ -95,7 +96,8 @@ form.addEventListener("submit", async event => {
     title: titleInput.value.trim(),
     date: dateInput.value,
     rating,
-    rewatch: rewatchInput.checked
+    rewatch: rewatchInput.checked,
+    releaseYear: chosenYear   // from a TMDB suggestion, or null if typed by hand
   };
 
   resultCard.hidden = true;     // clear the last film's result
@@ -121,6 +123,81 @@ form.addEventListener("submit", async event => {
     saveButton.disabled = false;
   }
 });
+
+// ---------- TMDB suggestions while typing ----------
+// After you stop typing for a moment, ask the Apps Script to search TMDB and show
+// up to 5 matches. Tapping one fills in TMDB's exact title and remembers its year,
+// which is saved as Release Year so the scraper picks exactly that film.
+const suggestionList = document.getElementById("suggestions");
+const titleYear = document.getElementById("title-year");
+let chosenYear = null;     // year of the tapped suggestion
+let searchTimer = null;    // waits for a pause in typing
+let searchNumber = 0;      // so a slow, older search can't overwrite a newer one
+
+function clearSuggestion() {
+  chosenYear = null;
+  titleYear.textContent = "";
+  suggestionList.hidden = true;
+  suggestionList.replaceChildren();
+}
+
+titleInput.addEventListener("input", () => {
+  // Typing after picking a suggestion means it no longer applies.
+  chosenYear = null;
+  titleYear.textContent = "";
+  clearTimeout(searchTimer);
+  const query = titleInput.value.trim();
+  if (query.length < 3) { suggestionList.hidden = true; return; }
+  searchTimer = setTimeout(() => searchTmdb(query), 500);   // half a second after the last keystroke
+});
+
+async function searchTmdb(query) {
+  const key = localStorage.getItem(KEY_STORAGE);
+  if (!key) return;   // no key on this device yet: just type and save as normal
+  const thisSearch = ++searchNumber;
+  try {
+    const result = await callScript({ key, action: "search", q: query });
+    if (thisSearch !== searchNumber || titleInput.value.trim() !== query) return;   // out of date
+    showSuggestions(result.ok ? result.results : []);
+  } catch (err) {
+    suggestionList.hidden = true;   // no signal: no suggestions, saving still works
+  }
+}
+
+function showSuggestions(results) {
+  if (!results.length) {
+    const none = Object.assign(document.createElement("li"), {
+      className: "suggestion-none",
+      textContent: "Not found on TMDB. You can still save it as typed."
+    });
+    suggestionList.replaceChildren(none);
+    suggestionList.hidden = false;
+    return;
+  }
+  suggestionList.replaceChildren(...results.map(film => {
+    const item = document.createElement("li");
+    const button = Object.assign(document.createElement("button"), { type: "button", className: "suggestion" });
+    const poster = film.poster
+      ? Object.assign(document.createElement("img"), { src: film.poster, alt: "", loading: "lazy", referrerPolicy: "no-referrer" })
+      : Object.assign(document.createElement("span"), { className: "poster-blank" });
+    poster.classList.add("poster");
+    const text = document.createElement("span");
+    text.append(
+      Object.assign(document.createElement("span"), { className: "suggestion-title", textContent: film.title }),
+      Object.assign(document.createElement("span"), { className: "suggestion-year", textContent: film.year || "year unknown" })
+    );
+    button.append(poster, text);
+    button.addEventListener("click", () => {
+      titleInput.value = film.title;
+      chosenYear = film.year || null;
+      titleYear.textContent = film.year ? `· ${film.year} on TMDB` : "· picked from TMDB";
+      suggestionList.hidden = true;
+    });
+    item.append(button);
+    return item;
+  }));
+  suggestionList.hidden = false;
+}
 
 // ---------- TMDB result card ----------
 // After a save, say clearly whether TMDB found the film. It stays until you
