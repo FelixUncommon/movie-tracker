@@ -375,13 +375,85 @@ let confirmFilm = null;   // the film the "Are you sure?" box is about (fixed wh
 function openPanel(film) {
   panelFilm = film;
   document.getElementById("panel-title").textContent = film.t;
-  document.getElementById("panel-rating").textContent = film.r ?? "–";
-  document.getElementById("panel-date").textContent = `Watched ${film.d}`;
+  document.getElementById("panel-date").textContent = `Watched ${film.d}` + (film.rw ? " · Rewatch" : "");
+  fillDetails(film);
   // The films are stored in Sheet order, so the last few are the most recently added.
   const recentIds = loadFilms().slice(-RECENT_LIMIT).map(f => f.id);
   const canDelete = film.id != null && recentIds.includes(film.id);
   document.getElementById("panel-delete").hidden = !canDelete;
   panel.hidden = false;
+}
+
+// ---------- Film details in the panel ----------
+// Everything comes from the saved Seen list (the script sends the details with it),
+// so the panel opens instantly, even without signal.
+
+// 1 → "1st", 2 → "2nd", 23 → "23rd", 11 → "11th"
+function ordinal(n) {
+  const tens = n % 100, ones = n % 10;
+  const suffix = tens >= 11 && tens <= 13 ? "th" : ones === 1 ? "st" : ones === 2 ? "nd" : ones === 3 ? "rd" : "th";
+  return n + suffix;
+}
+
+// Small helper: make an element with a class and some text.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function fillDetails(film) {
+  const box = document.getElementById("panel-details");
+  const parts = [];
+
+  // My rating and TMDB's, side by side.
+  if (film.r != null || film.tm != null) {
+    const scores = el("div", "scores");
+    const score = (label, value) => {
+      const block = el("div");
+      const big = el("div", "score-value", value == null ? "–" : String(value));
+      if (value != null) big.append(el("span", "score-of", " /10"));
+      block.append(el("div", "score-label", label), big);
+      return block;
+    };
+    scores.append(score("My rating", film.r), score("TMDB", film.tm == null ? null : Math.round(film.tm * 10) / 10));
+    parts.push(scores);
+
+    // How it compares: rank among my rated films, and against TMDB.
+    const notes = [];
+    if (film.r != null) {
+      const rated = loadFilms().filter(f => f.r != null);
+      const higher = rated.filter(f => f.r > film.r).length;
+      const same = rated.filter(f => f.r === film.r).length;
+      notes.push(`${same > 1 ? "Joint " : ""}${ordinal(higher + 1)} of ${rated.length} I've rated`);
+    }
+    if (film.r != null && film.tm != null) {
+      const diff = Math.round((film.r - film.tm) * 10) / 10;
+      notes.push(diff === 0 ? "level with TMDB" : `${Math.abs(diff)} ${diff > 0 ? "above" : "below"} TMDB`);
+    }
+    if (notes.length) parts.push(el("p", "score-note", notes.join(" · ")));
+  }
+
+  // TMDB details, one row each. Rows with nothing in them are skipped.
+  const runtime = film.m ? `${Math.floor(film.m / 60)}h ${String(film.m % 60).padStart(2, "0")} (${film.m} mins)` : "";
+  const rows = [
+    ["Released", film.y || ""],
+    ["Runtime", runtime],
+    ["Genres", film.g || ""],
+    ["Director", film.dir || ""],
+    ["Starring", film.c || ""]
+  ].filter(([, value]) => value !== "");
+
+  if (rows.length) {
+    const list = el("dl", "detail-rows");
+    rows.forEach(([label, value]) => list.append(el("dt", "", label), el("dd", "", String(value))));
+    parts.push(list);
+  } else {
+    parts.push(el("p", "score-note", "No TMDB details yet. They appear once the scraper has matched this film and the list refreshes."));
+  }
+
+  box.replaceChildren(...parts);
 }
 
 function closePanel() { panel.hidden = true; }

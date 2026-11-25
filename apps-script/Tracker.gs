@@ -59,8 +59,11 @@ function csvOfRawTab_() {
   }
 }
 
-// Sends back every film as { id: Record ID, t: title, r: rating, d: "DD/MM/YYYY" }, in Sheet order.
+// Sends back every film, in Sheet order, for the Seen list and the film panel:
+//   id: Record ID, t: title, r: my rating, d: "DD/MM/YYYY", rw: rewatch (true/false),
+//   y: release year, m: runtime (mins), g: genres, dir: director, c: cast, tm: TMDB rating.
 // Short names keep the reply small, which matters on a weak phone signal.
+// The detail columns are optional: if one is missing it's just left blank.
 function listFilms_() {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TRACKER_TAB);
@@ -74,17 +77,34 @@ function listFilms_() {
     };
     const titleAt = at("Movie Title"), ratingAt = at("Rating"), dateAt = at("Date Watched");
     const idAt = at("Record ID");
+    const optional = name => headers.indexOf(name);   // -1 if the column isn't there
+    const cell = (row, index) => index === -1 ? "" : row[index];
+    const text = (row, index) => String(cell(row, index)).trim();
+    const num = (row, index) => { const v = cell(row, index); return v === "" || isNaN(Number(v)) ? null : Number(v); };
+    const rewatchAt = optional("Rewatch?"), yearAt = optional("Release Year"), runtimeAt = optional("Runtime (mins)");
+    const genreAt = optional("Genre"), directorAt = optional("Director"), tmdbAt = optional("TMDB Rating");
+    const castAt = optional("Cast");
+    const leadAts = ["Lead Actor 1", "Lead Actor 2", "Lead Actor 3"].map(optional);
     const timeZone = Session.getScriptTimeZone();
 
     const films = values.slice(1)
       .filter(row => String(row[titleAt]).trim() !== "")
       .map(row => {
         const date = row[dateAt];
+        // Cast column if it has something, otherwise the three lead actors.
+        const cast = text(row, castAt) || leadAts.map(i => text(row, i)).filter(Boolean).join(", ");
         return {
           id: row[idAt] === "" ? null : Number(row[idAt]),
           t: String(row[titleAt]).trim(),
           r: row[ratingAt] === "" ? null : Number(row[ratingAt]),
-          d: date instanceof Date ? Utilities.formatDate(date, timeZone, "dd/MM/yyyy") : String(date)
+          d: date instanceof Date ? Utilities.formatDate(date, timeZone, "dd/MM/yyyy") : String(date),
+          rw: text(row, rewatchAt).toLowerCase() === "yes",
+          y: num(row, yearAt),
+          m: num(row, runtimeAt),
+          g: text(row, genreAt),
+          dir: text(row, directorAt),
+          c: cast,
+          tm: num(row, tmdbAt)
         };
       });
     return reply_({ ok: true, films: films });

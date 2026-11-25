@@ -239,9 +239,7 @@ a.tab { text-align: center; text-decoration: none; }   /* the Stats link looks l
   padding: 10px 20px calc(22px + env(safe-area-inset-bottom));
 }
 .grabber { width: 36px; height: 4px; background: #3a3340; border-radius: 2px; margin: 0 auto 16px; }
-.sheet-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.panel-title { font-size: 20px; font-weight: 700; }
-.panel-rating { color: var(--accent); font-size: 24px; font-weight: 700; }
+.panel-title { font-size: 22px; font-weight: 700; margin: 0; line-height: 1.25; }
 .panel-date { color: var(--muted); font-size: 14px; margin: 2px 0 12px; }
 
 .dialog { width: 100%; max-width: 360px; background: var(--card); border-radius: 16px; padding: 22px 20px; text-align: center; }
@@ -281,3 +279,15 @@ a.tab { text-align: center; text-decoration: none; }   /* the Stats link looks l
 .suggestion-title { display: block; font-weight: 600; }
 .suggestion-year { display: block; color: var(--muted); font-size: 14px; }
 .suggestion-none { color: var(--muted); font-size: 14px; padding: 8px; }
+
+/* ---------- Film details in the panel ---------- */
+.sheet { max-height: 88vh; overflow-y: auto; }   /* long panels scroll inside themselves */
+.scores { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 6px; }
+.score-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.score-value { color: var(--accent); font-size: 34px; font-weight: 700; line-height: 1.1; }
+.score-of { color: var(--muted); font-size: 16px; font-weight: 400; }
+.score-note { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.detail-rows { display: grid; grid-template-columns: auto 1fr; gap: 0; margin: 0 0 8px; }
+.detail-rows dt, .detail-rows dd { padding: 9px 0; border-top: 1px solid #2b2530; margin: 0; }
+.detail-rows dt { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 12px; }
+.detail-rows dd { font-size: 15px; padding-left: 16px; }
