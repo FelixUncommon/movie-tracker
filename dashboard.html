@@ -350,6 +350,9 @@
       padding-right: 12px;
     }
 
+    /* ---- Actor lookup (People section) ---- */
+    .actor-lookup { margin-top: 28px; }
+
     /* ---- Film finder ---- */
     .finder-label {
       display: block;
@@ -730,6 +733,14 @@
           <h3>Studios</h3>
           <ol class="ranked" id="list-studios"></ol>
         </div>
+      </div>
+      <!-- Actor lookup: the same text box + <datalist> trick as the film finder.
+           Its options are every actor in the films on show; picking one opens the panel below. -->
+      <div class="actor-lookup">
+        <label class="finder-label" for="actor-search">Look up an actor</label>
+        <input class="finder-input" id="actor-search" type="search" list="actor-options"
+               placeholder="Type a name…" autocomplete="off">
+        <datalist id="actor-options"></datalist>
       </div>
       <!-- Filled in by JavaScript when a name is clicked. "hidden" keeps it out of sight until then. -->
       <div id="person-panel" class="person-panel" hidden></div>
@@ -1870,8 +1881,35 @@
     function renderPeople(films) {
       peopleFilms = films;
       Object.entries(PEOPLE).forEach(([kind, p]) => renderRanked(p.listId, tally(films, p.names), kind));
+      fillActorLookup(films);
       refreshPersonPanel(); // keep an open panel in step with the year filter
     }
+
+    // ---- Actor lookup ----
+    // Every actor in the films on show, most-seen first, then A–Z.
+    // Rebuilt with the year filter, so the list only offers names that have films.
+    function fillActorLookup(films) {
+      const actors = tally(films, castOf)
+        .sort((a, b) => b.films.length - a.films.length || a.name.localeCompare(b.name));
+      const list = document.getElementById("actor-options");
+      list.replaceChildren(...actors.map(a => {
+        const option = el("option");
+        option.value = a.name; // what goes in the box when picked
+        option.label = a.films.length > 1 ? `${a.films.length} films` : "1 film"; // extra hint, where the browser shows it
+        return option;
+      }));
+    }
+
+    // "input" fires on each keystroke and when an option is picked. Only act once
+    // the text exactly matches an actor, then open their panel (the same one the lists use).
+    document.getElementById("actor-search").addEventListener("input", e => {
+      const name = e.target.value.trim();
+      if (!peopleFilms.some(f => castOf(f).includes(name))) return;
+      openPerson = { kind: "actor", name };
+      refreshPersonPanel();
+      e.target.blur(); // on the phone, this puts the keyboard away so the panel is visible
+      document.getElementById("person-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
 
     // A name in the lists is a <button>, so it works with the keyboard too.
     // aria-expanded tells screen readers (and our CSS) whether its panel is open.
